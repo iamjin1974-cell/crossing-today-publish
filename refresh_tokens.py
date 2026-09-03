@@ -26,7 +26,6 @@ def refresh(url, grant, token):
     r = requests.get(url, params={"grant_type": grant, "access_token": token}, timeout=30).json()
     if "access_token" not in r:
         raise SystemExit(f"갱신 실패: {json.dumps(r, ensure_ascii=False)}")
-    pint = None
     print(f"  새 토큰 유효기간 {r.get('expires_in', 0)//86400}일")
     return r["access_token"]
 

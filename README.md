@@ -1,12 +1,12 @@
 # 크로싱투데이 자동 게시 (Instagram + Threads)
 
-노션 시트에서 **승인**을 체크한 회차를 매일 08:00 KST에 GitHub Actions가 인스타그램(캐러셀 + 릴스)과 스레드(캐러셀)에 자동으로 올리고, 게시 URL을 시트에 되돌려 적는다. 서버 없음, 비용 없음.
+노션 시트에서 **승인**을 체크한 회차를 매일 07:00 KST에 GitHub Actions가 인스타그램(캐러셀 + 릴스)과 스레드(캐러셀)에 자동으로 올리고, 게시 URL을 시트에 되돌려 적는다. 서버 없음, 비용 없음.
 
 ```
 제작 창(Claude)  ──add_post.py──▶  posts/<회차>/slide_01.jpg … reel.mp4
         └── 노션 행: 캡션 · 스레드 캡션 · 미디어 폴더 · (게시 예정일)
 Kim  ── 노션에서 '승인' 체크
-GitHub Actions(매일 08:00) ── publish.py ──▶ Instagram 캐러셀 → 릴스 → Threads 캐러셀 → 노션에 URL 기록, 상태 '완료'
+GitHub Actions(매일 07:00) ── publish.py ──▶ Instagram 캐러셀 → 릴스 → Threads 캐러셀 → 노션에 URL 기록, 상태 '완료'
 GitHub Actions(매주 월) ── refresh_tokens.py ──▶ 60일 토큰 자동 연장
 ```
 
@@ -55,9 +55,9 @@ GitHub Actions(매주 월) ── refresh_tokens.py ──▶ 60일 토큰 자�
 저장소 → Actions → **크로싱투데이 자동 게시** → Run workflow → dry_run = `true` → 로그에서 노션 조회·URL 생성이 정상인지 확인. 이후 승인 행 하나로 dry_run=`false` 실행 → 인스타·스레드에 실제 게시되는지 확인.
 
 ## 2. 매 회차 흐름
-1. 제작 창에서 이미지·릴스 렌더 후 `GH_PAT=… GH_REPO=<계정>/crossing-today-publish python3 add_post.py 26_아침의결심 slide_*.jpg reel.mp4`
+1. 제작 창에서 이미지·릴스 렌더 후 저장소 `posts/<회차폴더>/`에 `slide_01.jpg…`, `reel.mp4`로 업로드. Claude 클라우드 환경은 GitHub 쓰기가 막혀 있어 `add_post.py`는 **네트워크가 열린 PC에서만** 동작함(`GH_PAT=… GH_REPO=iamjin1974-cell/crossing-today-publish python3 add_post.py 27_제목 slide_*.jpg reel.mp4`). Claude 창에서는 **Claude in Chrome으로 GitHub 업로드 페이지(`…/upload/main/posts/<회차폴더>`)에 file_upload** 하거나, Kim이 PC 브라우저에서 같은 페이지에 파일을 드래그한다.
 2. 노션 행: **캡션**(인스타 전체), **스레드 캡션**(500자 이내), **미디어 폴더** = `26_아침의결심`, 필요하면 **게시 예정일**.
-3. Kim이 **승인** 체크 → 다음 날 08:00에 자동 게시. 하루 1회차(MAX_POSTS_PER_RUN)만 나가고 나머지는 다음 날 이어서.
+3. Kim이 **승인** 체크 → 다음 날 07:00에 자동 게시. 하루 1회차(MAX_POSTS_PER_RUN)만 나가고 나머지는 다음 날 이어서.
 4. 결과는 행의 **게시 URL / 릴스 게시 URL / 스레드 URL / 게시 로그**, 상태 **완료**. 실패하면 게시 로그에 원인이 남고 상태는 그대로(다음 날 재시도).
 
 ## 3. 알아둘 것

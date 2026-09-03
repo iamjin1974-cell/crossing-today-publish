@@ -1,0 +1,21 @@
+name: 토큰 갱신 (매주)
+
+on:
+  schedule:
+    - cron: "30 1 * * 1"   # 매주 월요일 10:30 KST
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests pynacl
+      - env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          TH_ACCESS_TOKEN: ${{ secrets.TH_ACCESS_TOKEN }}
+        run: python refresh_tokens.py

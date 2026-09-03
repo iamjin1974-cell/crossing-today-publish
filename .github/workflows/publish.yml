@@ -1,0 +1,41 @@
+name: 크로싱투데이 자동 게시
+
+on:
+  schedule:
+    - cron: "0 23 * * *"   # 매일 08:00 KST (전날 UTC 23:00)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "true면 실제 게시 없이 로그만"
+        default: "false"
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - name: 게시
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATA_SOURCE_ID: ${{ secrets.NOTION_DATA_SOURCE_ID }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          TH_USER_ID: ${{ secrets.TH_USER_ID }}
+          TH_ACCESS_TOKEN: ${{ secrets.TH_ACCESS_TOKEN }}
+          CLD_CLOUD_NAME: ${{ secrets.CLD_CLOUD_NAME }}
+          CLD_API_KEY: ${{ secrets.CLD_API_KEY }}
+          CLD_API_SECRET: ${{ secrets.CLD_API_SECRET }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          POST_REELS: ${{ vars.POST_REELS || 'true' }}
+          POST_THREADS: ${{ vars.POST_THREADS || 'true' }}
+          MAX_POSTS_PER_RUN: ${{ vars.MAX_POSTS_PER_RUN || '1' }}
+        run: python publish.py

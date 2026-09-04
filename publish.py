@@ -4,19 +4,22 @@
 
 흐름
   1. 노션 '크로싱투데이 콘텐츠 시트'에서  승인=체크 & 상태≠완료 & (게시 예정일 비었거나 ≤ 오늘)  행을 가져온다
-  2. 행의 '미디어 폴더'(예: 26_아침의결심) 아래 posts/<폴더>/slide_*.jpg, reel.mp4 를 공개 URL로 만든다
+  2. 행의 '미디어 폴더'(예: 27_공통점다섯) 아래 posts/<폴더>/slide_*.jpg, reel.mp4 를 공개 URL로 만든다
        - Cloudinary 키가 있으면 Cloudinary에 올려 그 URL 사용
-       - 없으면 이 저장소의 raw.githubusercontent.com URL 사용 (저장소가 public이어야 함)
+       - 없으면 이 저장소 파일의 jsDelivr CDN URL(기본) 또는 raw.githubusercontent.com URL 사용 (MEDIA_HOST, 저장소 public 필요)
+         경로의 한글은 퍼센트 인코딩 (Meta 페처가 비ASCII URL을 못 읽음 — 27호 첫 실행에서 확인)
   3. Instagram 캐러셀 → (reel.mp4 있으면) Instagram 릴스 → Threads 캐러셀 순서로 게시
   4. 노션 행에 게시 URL·릴스 게시 URL·스레드 URL·게시 로그 기록, 상태 '완료'
+     (이미 URL이 있는 채널은 재실행 때 건너뜀 → 일부 실패 후 재실행해도 중복 게시 없음)
 
 환경변수 (GitHub Secrets)
   NOTION_TOKEN, NOTION_DATA_SOURCE_ID
   IG_USER_ID, IG_ACCESS_TOKEN, TH_USER_ID, TH_ACCESS_TOKEN
   CLD_CLOUD_NAME, CLD_API_KEY, CLD_API_SECRET (선택)
-  GITHUB_REPOSITORY (Actions가 자동 제공), DRY_RUN, POST_REELS, POST_THREADS, MAX_POSTS_PER_RUN
+  GITHUB_REPOSITORY (Actions가 자동 제공), DRY_RUN, POST_REELS, POST_THREADS, MAX_POSTS_PER_RUN, MEDIA_HOST(jsdelivr|raw)
 """
 import glob, hashlib, json, os, sys, time, datetime as dt
+from urllib.parse import quote
 import requests
 
 IG_HOST = "https://graph.instagram.com/v25.0"
@@ -116,9 +119,11 @@ def th_carousel(uid, token, urls, text):
     for i, u in enumerate(urls, 1):
         kids.append(call("POST", f"{TH_HOST}/{uid}/threads", media_type="IMAGE", image_url=u, is_carousel_item="true", access_token=token)["id"])
         log(f"  TH 슬라이드 {i}/{len(urls)} 컨테이너 OK")
+    # 자식 컨테이너가 전부 FINISHED 되기 전에 캐러셀을 만들면 "children invalid/expired"(sub 4279004) — 27호에서 확인
+    for i, k in enumerate(kids, 1):
+        wait_ready(f"{TH_HOST}/{k}", token, fields="status,error_message", max_wait=300, every=10)
+    log("  TH 자식 컨테이너 전부 준비됨")
     c = call("POST", f"{TH_HOST}/{uid}/threads", media_type="CAROUSEL", children=",".join(kids), text=text, access_token=token)
-    if not DRY:
-        time.sleep(30)
     wait_ready(f"{TH_HOST}/{c['id']}", token, fields="status,error_message")
     p = call("POST", f"{TH_HOST}/{uid}/threads_publish", creation_id=c["id"], access_token=token)
     return call("GET", f"{TH_HOST}/{p['id']}", fields="permalink", access_token=token).get("permalink")
@@ -141,6 +146,19 @@ def cld_upload(path, folder, public_id, rtype):
     return d["secure_url"]
 
 
+def public_url(path):
+    """저장소 파일 → Meta가 가져갈 수 있는 공개 URL.
+    한글 폴더명은 반드시 퍼센트 인코딩(Meta 페처는 비ASCII URL을 못 읽음).
+    MEDIA_HOST=jsdelivr(기본) | raw
+    """
+    repo = env("GITHUB_REPOSITORY")
+    sha = env("GITHUB_SHA", "main")
+    rel = quote(path.replace(os.sep, "/"), safe="/")
+    if env("MEDIA_HOST", "jsdelivr").lower() == "raw":
+        return f"https://raw.githubusercontent.com/{repo}/{sha}/{rel}"
+    return f"https://cdn.jsdelivr.net/gh/{repo}@{sha}/{rel}"
+
+
 def media_urls(folder):
     base = os.path.join("posts", folder)
     slides = sorted(glob.glob(os.path.join(base, "slide_*.jpg")) + glob.glob(os.path.join(base, "slide_*.jpeg")))
@@ -153,17 +171,15 @@ def media_urls(folder):
         urls = [cld_upload(p, f"crossing_today/{folder}", f"slide_{i:02d}", "image") for i, p in enumerate(slides, 1)]
         reel_url = cld_upload(reel, f"crossing_today/{folder}", "reel", "video") if reel else None
     else:
-        repo = env("GITHUB_REPOSITORY")
-        sha = env("GITHUB_SHA", "main")
-        raw = f"https://raw.githubusercontent.com/{repo}/{sha}/"
-        log("  GitHub raw URL 사용 (저장소 public 필요)")
-        urls = [raw + p.replace(os.sep, "/") for p in slides]
-        reel_url = raw + reel.replace(os.sep, "/") if reel else None
+        urls = [public_url(p) for p in slides]
+        reel_url = public_url(reel) if reel else None
+        log(f"  공개 URL: {urls[0]}")
         if not DRY:
             for u in urls[:1] + ([reel_url] if reel_url else []):
                 r = requests.head(u, timeout=30, allow_redirects=True)
-                if r.status_code != 200:
-                    raise ApiError(f"공개 URL 확인 실패 {u} → HTTP {r.status_code} (저장소가 private?)")
+                ct = r.headers.get("content-type", "")
+                if r.status_code != 200 or not (ct.startswith("image/") or ct.startswith("video/")):
+                    raise ApiError(f"공개 URL 확인 실패 {u} → HTTP {r.status_code} content-type={ct}")
     return urls, reel_url
 
 
@@ -197,7 +213,9 @@ def fetch_due_rows():
         P = pg["properties"]
         rows.append({"id": pg["id"], "title": title(P.get("후킹 제목", {})), "caption": rich(P.get("캡션", {})),
                      "threads_caption": rich(P.get("스레드 캡션", {})), "folder": rich(P.get("미디어 폴더", {})),
-                     "already": (P.get("게시 URL", {}) or {}).get("url")})
+                     "already": (P.get("게시 URL", {}) or {}).get("url"),
+                     "already_reel": (P.get("릴스 게시 URL", {}) or {}).get("url"),
+                     "already_th": (P.get("스레드 URL", {}) or {}).get("url")})
     return rows
 
 
@@ -235,7 +253,10 @@ def publish_row(row):
                 res["ig"] = ig_carousel(ig_uid, ig_tok, urls, row["caption"]); log(f"  ✅ IG 캐러셀 {res['ig']}")
             except Exception as e:
                 errors.append(f"IG 캐러셀: {e}")
-        if flag("POST_REELS", "true") and reel_url:
+        if row.get("already_reel"):
+            log("  IG 릴스 이미 게시됨 — 건너뜀")
+            res["reel"] = row["already_reel"]
+        elif flag("POST_REELS", "true") and reel_url:
             try:
                 res["reel"] = ig_reel(ig_uid, ig_tok, reel_url, row["caption"], urls[0]); log(f"  ✅ IG 릴스 {res['reel']}")
             except Exception as e:
@@ -243,7 +264,10 @@ def publish_row(row):
     else:
         errors.append("IG 자격증명 없음")
 
-    if flag("POST_THREADS", "true"):
+    if row.get("already_th"):
+        log("  Threads 이미 게시됨 — 건너뜀")
+        res["th"] = row["already_th"]
+    elif flag("POST_THREADS", "true"):
         if th_uid and th_tok:
             try:
                 res["th"] = th_carousel(th_uid, th_tok, urls, row["threads_caption"] or row["caption"][:500]); log(f"  ✅ Threads {res['th']}")

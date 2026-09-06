@@ -2,7 +2,7 @@ name: 크로싱투데이 자동 게시
 
 on:
   schedule:
-    - - cron: "40 21 * * *"   # 매일 07:00 KST (전날 UTC 22:00)
+        - cron: "40 21 * * *"   # 매일 06:40 KST (전날 UTC 22:00)
   workflow_dispatch:
     inputs:
       dry_run:

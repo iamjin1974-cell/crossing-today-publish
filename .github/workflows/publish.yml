@@ -2,7 +2,7 @@ name: 크로싱투데이 자동 게시
 
 on:
   schedule:
-        - cron: "40 21 * * *"   # 매일 06:40 KST (전날 UTC 22:00)
+    - cron: "40 21 * * *"   # 매일 06:40 KST (전날 UTC 21:40)
   workflow_dispatch:
     inputs:
       dry_run:
@@ -29,6 +29,7 @@ jobs:
           NOTION_DATA_SOURCE_ID: ${{ secrets.NOTION_DATA_SOURCE_ID }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
           TH_USER_ID: ${{ secrets.TH_USER_ID }}
           TH_ACCESS_TOKEN: ${{ secrets.TH_ACCESS_TOKEN }}
           CLD_CLOUD_NAME: ${{ secrets.CLD_CLOUD_NAME }}
@@ -38,4 +39,9 @@ jobs:
           POST_REELS: ${{ vars.POST_REELS || 'true' }}
           POST_THREADS: ${{ vars.POST_THREADS || 'true' }}
           MAX_POSTS_PER_RUN: ${{ vars.MAX_POSTS_PER_RUN || '1' }}
+          MUSIC_ENABLED: ${{ vars.MUSIC_ENABLED || 'true' }}
+          MUSIC_DEFAULT_QUERY: ${{ vars.MUSIC_DEFAULT_QUERY || 'calm piano' }}
+          MUSIC_AUDIO_VOLUME: ${{ vars.MUSIC_AUDIO_VOLUME || '100' }}
+          MUSIC_VIDEO_VOLUME: ${{ vars.MUSIC_VIDEO_VOLUME || '0' }}
+          MUSIC_REQUIRED: ${{ vars.MUSIC_REQUIRED || 'false' }}
         run: python publish.py

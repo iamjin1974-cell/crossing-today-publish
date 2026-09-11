@@ -6,7 +6,7 @@
   1. 노션 시트에서 최근 INSIGHTS_DAYS(기본 45)일 안에 게시된 행(게시 URL 또는 스레드 URL 있음)을 가져온다
   2. 인스타 미디어 목록(/{IG_USER_ID}/media)과 스레드 게시물 목록(/{TH_USER_ID}/threads)을 받아 permalink 로 행과 짝을 맞춘다
   3. 인스타 캐러셀·릴스 insights(조회·도달·저장·공유·좋아요·댓글·팔로우), 스레드 insights(조회·좋아요·답글·리포스트)를 행에 기록
-     → 노션 열: 조회수(IG 캐러셀 조회), IG 도달, IG 저장, IG 공유, IG 좋아요, IG 댓글, IG 팔로우, 릴스 조회수, TH 조회수, TH 좋아요, TH 답글, TH 리포스트, 지표 갱신
+     → 노션 열: IG 조회수(캐러셀; '조회수' 열은 원본 아웃라이어 조회수라 건드리지 않음), IG 도달, IG 저장, IG 공유, IG 좋아요, IG 댓글, IG 팔로우, 릴스 조회수, TH 조회수, TH 좋아요, TH 답글, TH 리포스트, 지표 갱신
   4. 최근 48시간 인스타 댓글·스레드 답글을 모아 노션 페이지 "오늘의 답글 YYYY-MM-DD" 를 만든다 (REPLIES_PARENT_PAGE_ID 필요)
      — 답글 초안은 이 페이지를 읽는 Claude 작업이 채운다. 여기서는 목록만.
   5. 일요일이면 페이지 상단에 주간 요약(표지 A/B 중앙값, 형식별 평균, 채널별 합계)을 붙인다
@@ -308,7 +308,7 @@ def main():
             media = ig_idx[m.group(1)]
             ins = ig_insights(host, media, ig_tok)
             rec["ig_views"] = ins.get("views")
-            for key, col in (("views", "조회수"), ("reach", "IG 도달"), ("saved", "IG 저장"), ("shares", "IG 공유"),
+            for key, col in (("views", "IG 조회수"), ("reach", "IG 도달"), ("saved", "IG 저장"), ("shares", "IG 공유"),
                              ("likes", "IG 좋아요"), ("comments", "IG 댓글"), ("follows", "IG 팔로우")):
                 v = num(ins.get(key))
                 if v:
@@ -322,7 +322,7 @@ def main():
             if v:
                 props["릴스 조회수"] = v
             comments += ig_comments(host, media, ig_tok, since48)
-        m = TH_CODE.search(row["th"])
+        m = TH_CODE.search(row["th"]) or TH_CODE.search(row["ig"])  # 옛 행은 게시 URL 칸에 "IG | threads" 로 같이 적혀 있음
         if m and m.group(1) in th_idx:
             media = th_idx[m.group(1)]
             ins = th_insights(media, th_tok)

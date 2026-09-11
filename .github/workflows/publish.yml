@@ -2,9 +2,14 @@ name: 크로싱투데이 자동 게시
 
 on:
   schedule:
-    - cron: "40 21 * * *"   # 매일 06:40 KST (전날 UTC 21:40)
+    - cron: "40 21 * * *"   # 인스타 — 매일 06:40 KST (전날 UTC 21:40)
+    - cron: "5 12 * * *"    # 스레드 — 매일 21:05 KST (UTC 12:05)
+    - cron: "10 14 * * *"   # 성과 수집 — 매일 23:10 KST (UTC 14:10)
   workflow_dispatch:
     inputs:
+      mode:
+        description: "ig | threads | all | insights"
+        default: "all"
       dry_run:
         description: "true면 실제 게시 없이 로그만"
         default: "false"
@@ -13,8 +18,34 @@ concurrency:
   group: publish
   cancel-in-progress: false
 
+env:
+  NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+  NOTION_DATA_SOURCE_ID: ${{ secrets.NOTION_DATA_SOURCE_ID }}
+  IG_USER_ID: ${{ secrets.IG_USER_ID }}
+  IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+  FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+  TH_USER_ID: ${{ secrets.TH_USER_ID }}
+  TH_ACCESS_TOKEN: ${{ secrets.TH_ACCESS_TOKEN }}
+  CLD_CLOUD_NAME: ${{ secrets.CLD_CLOUD_NAME }}
+  CLD_API_KEY: ${{ secrets.CLD_API_KEY }}
+  CLD_API_SECRET: ${{ secrets.CLD_API_SECRET }}
+  DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+  POST_REELS: ${{ vars.POST_REELS || 'true' }}
+  MAX_POSTS_PER_RUN: ${{ vars.MAX_POSTS_PER_RUN || '1' }}
+  THREADS_MEDIA: ${{ vars.THREADS_MEDIA || 'cover' }}
+  THREADS_TOPIC_TAG: ${{ vars.THREADS_TOPIC_TAG || '독서' }}
+  HASHTAG_REWRITE: ${{ vars.HASHTAG_REWRITE || 'true' }}
+  HASHTAG_SET: ${{ vars.HASHTAG_SET || '#공감글귀 #글스타그램 #감성글 #좋은글귀 #옛글' }}
+  MUSIC_ENABLED: ${{ vars.MUSIC_ENABLED || 'true' }}
+  MUSIC_DEFAULT_QUERY: ${{ vars.MUSIC_DEFAULT_QUERY || '' }}
+  MUSIC_AUDIO_VOLUME: ${{ vars.MUSIC_AUDIO_VOLUME || '100' }}
+  MUSIC_VIDEO_VOLUME: ${{ vars.MUSIC_VIDEO_VOLUME || '0' }}
+  MUSIC_REQUIRED: ${{ vars.MUSIC_REQUIRED || 'false' }}
+  REPLIES_PARENT_PAGE_ID: ${{ vars.REPLIES_PARENT_PAGE_ID || '3cf9dc9db84881de9cf1c93193db2a02' }}
+  INSIGHTS_DAYS: ${{ vars.INSIGHTS_DAYS || '45' }}
+
 jobs:
-  publish:
+  run:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -23,25 +54,20 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install requests
-      - name: 게시
+
+      - name: 인스타 게시 (아침)
+        if: github.event.schedule == '40 21 * * *' || github.event.inputs.mode == 'ig' || github.event.inputs.mode == 'all'
         env:
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-          NOTION_DATA_SOURCE_ID: ${{ secrets.NOTION_DATA_SOURCE_ID }}
-          IG_USER_ID: ${{ secrets.IG_USER_ID }}
-          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
-          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
-          TH_USER_ID: ${{ secrets.TH_USER_ID }}
-          TH_ACCESS_TOKEN: ${{ secrets.TH_ACCESS_TOKEN }}
-          CLD_CLOUD_NAME: ${{ secrets.CLD_CLOUD_NAME }}
-          CLD_API_KEY: ${{ secrets.CLD_API_KEY }}
-          CLD_API_SECRET: ${{ secrets.CLD_API_SECRET }}
-          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
-          POST_REELS: ${{ vars.POST_REELS || 'true' }}
-          POST_THREADS: ${{ vars.POST_THREADS || 'true' }}
-          MAX_POSTS_PER_RUN: ${{ vars.MAX_POSTS_PER_RUN || '1' }}
-          MUSIC_ENABLED: ${{ vars.MUSIC_ENABLED || 'true' }}
-          MUSIC_DEFAULT_QUERY: ${{ vars.MUSIC_DEFAULT_QUERY || 'calm piano' }}
-          MUSIC_AUDIO_VOLUME: ${{ vars.MUSIC_AUDIO_VOLUME || '100' }}
-          MUSIC_VIDEO_VOLUME: ${{ vars.MUSIC_VIDEO_VOLUME || '0' }}
-          MUSIC_REQUIRED: ${{ vars.MUSIC_REQUIRED || 'false' }}
+          CHANNELS: ig,reels
         run: python publish.py
+
+      - name: 스레드 게시 (밤)
+        if: github.event.schedule == '5 12 * * *' || github.event.inputs.mode == 'threads' || github.event.inputs.mode == 'all'
+        env:
+          CHANNELS: threads
+          MAX_POSTS_PER_RUN: "3"
+        run: python publish.py
+
+      - name: 성과 수집
+        if: github.event.schedule == '10 14 * * *' || github.event.inputs.mode == 'insights'
+        run: python insights.py

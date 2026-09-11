@@ -98,28 +98,49 @@ def ig_media_index(host, uid, token, since):
     return idx
 
 
+IG_INSIGHTS_ROUTE = {"host": None, "token": None, "dead": False}
+
+
 def ig_insights(host, media, token):
-    """캐러셀/사진: views,reach,saved,shares,likes,comments,follows / 릴스: views,reach,saved,shares,likes,comments"""
+    """캐러셀/사진: views,reach,saved,shares,likes,comments,follows / 릴스: views,reach,saved,shares,likes,comments
+    권한 순서: FB 페이지 토큰(instagram_manage_insights 필요) → 실패하면 IG 로그인 토큰(graph.instagram.com, instagram_business_manage_insights)
+    한 번 통한 경로는 이후 그대로 쓰고, 둘 다 (#10) 권한 오류면 이 실행에서는 더 시도하지 않는다."""
+    if IG_INSIGHTS_ROUTE["dead"]:
+        return {}
     is_reel = media.get("media_product_type") == "REELS" or media.get("media_type") == "VIDEO"
     metrics = ["views", "reach", "saved", "shares", "likes", "comments"] + ([] if is_reel else ["follows"])
-    out = {}
-    try:
-        d = get(f"{host}/{media['id']}/insights", metric=",".join(metrics), access_token=token)
-        for row in d.get("data", []):
-            vals = row.get("values") or []
-            v = vals[0].get("value") if vals else row.get("total_value", {}).get("value")
-            out[row["name"]] = v
-    except ApiError as e:
-        log(f"   IG insights 묶음 실패({e}) → 개별 재시도")
-        for m in metrics:
-            try:
-                d = get(f"{host}/{media['id']}/insights", metric=m, access_token=token)
-                row = (d.get("data") or [{}])[0]
+    routes = [(IG_INSIGHTS_ROUTE["host"], IG_INSIGHTS_ROUTE["token"])] if IG_INSIGHTS_ROUTE["host"] else \
+        [(host, token)] + ([(IG_HOST_IGLOGIN, env("IG_ACCESS_TOKEN"))] if env("IG_ACCESS_TOKEN") and host != IG_HOST_IGLOGIN else [])
+    last = None
+    for h, t in routes:
+        try:
+            d = get(f"{h}/{media['id']}/insights", metric=",".join(metrics), access_token=t)
+            out = {}
+            for row in d.get("data", []):
                 vals = row.get("values") or []
-                out[m] = vals[0].get("value") if vals else None
-            except ApiError:
-                out[m] = None
-    return out
+                out[row["name"]] = vals[0].get("value") if vals else row.get("total_value", {}).get("value")
+            IG_INSIGHTS_ROUTE.update(host=h, token=t)
+            return out
+        except ApiError as e:
+            last = e
+            if "(#10)" in str(e) or "permission" in str(e).lower():
+                continue
+            # 지표 이름 문제면 개별 재시도
+            out = {}
+            for m in metrics:
+                try:
+                    d = get(f"{h}/{media['id']}/insights", metric=m, access_token=t)
+                    row = (d.get("data") or [{}])[0]
+                    vals = row.get("values") or []
+                    out[m] = vals[0].get("value") if vals else None
+                except ApiError:
+                    out[m] = None
+            if any(v is not None for v in out.values()):
+                IG_INSIGHTS_ROUTE.update(host=h, token=t)
+                return out
+    log(f"   IG insights 권한 없음 — 이번 실행은 인스타 지표 건너뜀. 앱에 instagram_manage_insights 권한 추가 후 FB_PAGE_TOKEN 재발급 필요 ({last})")
+    IG_INSIGHTS_ROUTE["dead"] = True
+    return {}
 
 
 def ig_comments(host, media, token, since):

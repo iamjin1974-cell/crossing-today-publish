@@ -35,7 +35,7 @@ env:
   THREADS_MEDIA: ${{ vars.THREADS_MEDIA || 'cover' }}
   THREADS_TOPIC_TAG: ${{ vars.THREADS_TOPIC_TAG || '독서' }}
   HASHTAG_REWRITE: ${{ vars.HASHTAG_REWRITE || 'true' }}
-  HASHTAG_SET: ${{ vars.HASHTAG_SET || '#공감글귀 #글스타그램 #감성글 #좋은글귀 #옛글' }}
+  HASHTAG_SET: "${{ vars.HASHTAG_SET || '#공감글귀 #글스타그램 #감성글 #좋은글귀 #옛글' }}"
   MUSIC_ENABLED: ${{ vars.MUSIC_ENABLED || 'true' }}
   MUSIC_DEFAULT_QUERY: ${{ vars.MUSIC_DEFAULT_QUERY || '' }}
   MUSIC_AUDIO_VOLUME: ${{ vars.MUSIC_AUDIO_VOLUME || '100' }}

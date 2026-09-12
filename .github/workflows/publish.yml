@@ -1,10 +1,22 @@
 name: 크로싱투데이 자동 게시
 
+# GitHub 예약 실행은 1.5~4시간씩 늦게 도는 일이 잦다 (34호 스레드가 새벽 1:23에 나감).
+# 그래서 슬롯을 여러 개 두고, publish.py 가 POST_WINDOW_KST 창 안에 들어온 첫 실행만 게시한다 (이미 URL 있으면 건너뜀).
 on:
   schedule:
-    - cron: "40 21 * * *"   # 인스타 — 매일 06:40 KST (전날 UTC 21:40)
-    - cron: "5 12 * * *"    # 스레드 — 매일 21:05 KST (UTC 12:05)
-    - cron: "10 14 * * *"   # 성과 수집 — 매일 23:10 KST (UTC 14:10)
+    # 인스타 — 목표 06:40 KST, 창 06:30~09:30. 슬롯 21:40/22:10/22:40/23:10 UTC
+    - cron: "40 21 * * *"
+    - cron: "10 22 * * *"
+    - cron: "40 22 * * *"
+    - cron: "10 23 * * *"
+    # 스레드 — 목표 21:00 KST, 창 20:30~23:50. 슬롯 10:35/11:05/11:35/12:05/12:35 UTC (19:35~21:35 KST 예약)
+    - cron: "35 10 * * *"
+    - cron: "5 11 * * *"
+    - cron: "35 11 * * *"
+    - cron: "5 12 * * *"
+    - cron: "35 12 * * *"
+    # 성과 수집 — 23:10 KST (늦어도 상관없음)
+    - cron: "10 14 * * *"
   workflow_dispatch:
     inputs:
       mode:
@@ -56,16 +68,18 @@ jobs:
       - run: pip install requests
 
       - name: 인스타 게시 (아침)
-        if: github.event.schedule == '40 21 * * *' || github.event.inputs.mode == 'ig' || github.event.inputs.mode == 'all'
+        if: contains(fromJSON('["40 21 * * *","10 22 * * *","40 22 * * *","10 23 * * *"]'), github.event.schedule) || github.event.inputs.mode == 'ig' || github.event.inputs.mode == 'all'
         env:
           CHANNELS: ig,reels
+          POST_WINDOW_KST: ${{ github.event_name == 'schedule' && '06:30-09:30' || '' }}
         run: python publish.py
 
       - name: 스레드 게시 (밤)
-        if: github.event.schedule == '5 12 * * *' || github.event.inputs.mode == 'threads' || github.event.inputs.mode == 'all'
+        if: contains(fromJSON('["35 10 * * *","5 11 * * *","35 11 * * *","5 12 * * *","35 12 * * *"]'), github.event.schedule) || github.event.inputs.mode == 'threads' || github.event.inputs.mode == 'all'
         env:
           CHANNELS: threads
           MAX_POSTS_PER_RUN: "3"
+          POST_WINDOW_KST: ${{ github.event_name == 'schedule' && '20:30-23:50' || '' }}
         run: python publish.py
 
       - name: 성과 수집

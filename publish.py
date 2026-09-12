@@ -11,6 +11,7 @@ v4에서 바뀐 것 (2026-09-11 진단 → 0단계)
   4. 인스타 해시태그 세트 자동 정리: 캡션 끝의 해시태그 줄을 떼고 발견용 기본 세트 + 원문 출처 태그(최대 3개)로 다시 붙인다.
      HASHTAG_SET 로 기본 세트 변경, HASHTAG_REWRITE=false 면 캡션 그대로.
   5. 릴스 음악 기본값: 검색어 없으면 트렌딩 첫 곡 (MUSIC_DEFAULT_QUERY 비움).
+  6. (v4.1) POST_WINDOW_KST="20:00-23:59" — 게시 허용 시간대. GitHub cron 지연 대비: 슬롯 여러 개 + 창 안 첫 실행만 게시.
 
 흐름
   1. 노션 '크로싱투데이 콘텐츠 시트'에서 승인=체크 & 상태≠완료 & (게시 예정일 비었거나 ≤ 오늘) 행을 가져온다
@@ -472,9 +473,33 @@ def publish_row(row, ch):
     return errors
 
 
+def in_window(now):
+    """POST_WINDOW_KST="20:00-23:59" 처럼 주면 그 시간대(KST) 밖에서는 게시하지 않는다.
+    GitHub 예약 실행이 1.5~4시간씩 늦게 도는 일이 잦아서(34호 스레드가 새벽 1:23에 나감), 여러 개의 cron 슬롯을 두고
+    창 안에 들어온 첫 실행만 게시하게 하는 장치. 비어 있으면 항상 게시."""
+    w = env("POST_WINDOW_KST")
+    if not w:
+        return True, ""
+    try:
+        a, b = w.split("-")
+        h1, m1 = map(int, a.split(":")); h2, m2 = map(int, b.split(":"))
+    except ValueError:
+        return True, f"POST_WINDOW_KST 형식 오류({w}) — 무시"
+    cur = now.hour * 60 + now.minute
+    ok = h1 * 60 + m1 <= cur <= h2 * 60 + m2
+    return ok, f"게시 창 {w} KST, 현재 {now:%H:%M}"
+
+
 def main():
     ch = channels()
-    log(f"크로싱투데이 자동 게시 시작 {dt.datetime.now(KST):%Y-%m-%d %H:%M} KST  채널={','.join(sorted(ch))}  DRY_RUN={DRY}")
+    now = dt.datetime.now(KST)
+    log(f"크로싱투데이 자동 게시 시작 {now:%Y-%m-%d %H:%M} KST  채널={','.join(sorted(ch))}  DRY_RUN={DRY}")
+    ok, why = in_window(now)
+    if why:
+        log("  " + why)
+    if not ok:
+        log("게시 창 밖 — 이번 실행은 건너뜀 (다음 슬롯에서 재시도)")
+        return 0
     rows = fetch_due_rows()
     # 이 실행의 채널에서 아직 할 일이 있는 행만
     todo = []

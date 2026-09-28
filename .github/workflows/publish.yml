@@ -9,7 +9,20 @@ on:
     - cron: "10 22 * * *"
     - cron: "40 22 * * *"
     - cron: "10 23 * * *"
-    # 스레드 — 목표 21:00 KST, 창 20:30~23:50. GitHub 지연이 4~6시간이라 15:05 KST부터 30분 간격 14슬롯 (창 밖 실행은 publish.py가 건너뜀)
+    # 스레드 단문 A(아침 07:00~09:30) 보강 슬롯 — 위 인스타 슬롯이 늦게 돌 때 대비
+    - cron: "40 23 * * *"
+    - cron: "10 0 * * *"
+    # 스레드 단문 B(점심 12:00~14:30) — 10:07 KST부터 30분 간격 (지연 1.5~4h 감안)
+    - cron: "7 1 * * *"
+    - cron: "37 1 * * *"
+    - cron: "7 2 * * *"
+    - cron: "37 2 * * *"
+    - cron: "7 3 * * *"
+    - cron: "37 3 * * *"
+    - cron: "7 4 * * *"
+    - cron: "37 4 * * *"
+    - cron: "7 5 * * *"
+    # 스레드 — 목표 21:00 KST (이 슬롯들이 단문 C 17:30~20:00 창도 겸함), 창 20:30~23:50. GitHub 지연이 4~6시간이라 15:05 KST부터 30분 간격 14슬롯 (창 밖 실행은 publish.py가 건너뜀)
     - cron: "5 6 * * *"
     - cron: "35 6 * * *"
     - cron: "5 7 * * *"
@@ -29,8 +42,11 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "ig | threads | all | insights"
+        description: "ig | threads | all | insights | text"
         default: "all"
+      text_slot:
+        description: "mode=text 일 때 A|B|C 로 슬롯 강제 (비우면 현재 시각으로 판단)"
+        default: ""
       dry_run:
         description: "true면 실제 게시 없이 로그만"
         default: "false"
@@ -89,6 +105,15 @@ jobs:
           CHANNELS: threads
           MAX_POSTS_PER_RUN: "3"
           POST_WINDOW_KST: ${{ github.event_name == 'schedule' && '20:30-23:50' || '' }}
+        run: python publish.py
+
+      - name: 스레드 단문 (텍스트 전용 A/B/C)
+        # 어느 예약 슬롯이든 실행되며, publish.py가 '지금 열린 슬롯'만 골라 게시한다 (이미 URL 있으면 건너뜀)
+        if: ${{ !cancelled() && (github.event_name == 'schedule' || github.event.inputs.mode == 'text') }}
+        env:
+          CHANNELS: text
+          TEXT_SLOTS: ${{ vars.TEXT_SLOTS || 'A=07:00-09:30,B=12:00-14:30,C=17:30-20:00' }}
+          TEXT_SLOT: ${{ github.event.inputs.text_slot || '' }}
         run: python publish.py
 
       - name: 성과 수집

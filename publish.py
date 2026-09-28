@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-크로싱투데이 자동 게시 — GitHub Actions에서 실행 (v4: 채널 분리 · 릴스 행별 스위치 · 스레드 단일 표지 · 해시태그 세트)
+크로싱투데이 자동 게시 — GitHub Actions에서 실행 (v5: v4 + 스레드 텍스트 단문 슬롯 A/B/C)
 
 v4에서 바뀐 것 (2026-09-11 진단 → 0단계)
   1. 채널 분리 실행: CHANNELS=ig (아침 06:40 KST) / CHANNELS=threads (밤 21:00 KST) / CHANNELS=ig,reels,threads (한 번에)
@@ -12,6 +12,11 @@ v4에서 바뀐 것 (2026-09-11 진단 → 0단계)
      HASHTAG_SET 로 기본 세트 변경, HASHTAG_REWRITE=false 면 캡션 그대로.
   5. 릴스 음악 기본값: 검색어 없으면 트렌딩 첫 곡 (MUSIC_DEFAULT_QUERY 비움).
   6. (v4.1) POST_WINDOW_KST="20:00-23:59" — 게시 허용 시간대. GitHub cron 지연 대비: 슬롯 여러 개 + 창 안 첫 실행만 게시.
+  7. (v5, 2026-09-29) CHANNELS=text — 스레드 '텍스트 전용' 단문 3개 (시트 열 '스레드 단문A/B/C').
+     - 스레드는 텍스트만 올린 글이 이미지 글보다 도달이 2.5배, 100~200자가 최적, 하루 여러 개가 성장에 결정적 → 회차마다 단문 3개를 시간대별로 게시
+     - 슬롯 창(KST, TEXT_SLOTS): A=07:00-09:30 / B=12:00-14:30 / C=17:30-20:00. 어느 cron이 돌든 '지금 열린 슬롯'만 본다.
+     - 대상 행: 승인 체크 + 게시 예정일 = 오늘. 해당 슬롯 URL('단문A URL' 등)이 비어 있고 본문이 있으면 게시 → URL + '단문 로그' 기록. 상태는 건드리지 않음.
+     - 수동 실행: mode=text (+ TEXT_SLOT=A|B|C 로 창 무시하고 강제, TEXT_DATE=YYYY-MM-DD 로 날짜 지정)
 
 흐름
   1. 노션 '크로싱투데이 콘텐츠 시트'에서 승인=체크 & 상태≠완료 & (게시 예정일 비었거나 ≤ 오늘) 행을 가져온다
@@ -473,6 +478,106 @@ def publish_row(row, ch):
     return errors
 
 
+# ---------------- 스레드 단문 (텍스트 전용, v5) ----------------
+
+DEFAULT_TEXT_SLOTS = "A=07:00-09:30,B=12:00-14:30,C=17:30-20:00"
+
+
+def text_slots():
+    """TEXT_SLOTS="A=07:00-09:30,B=12:00-14:30,C=17:30-20:00" → [(슬롯, 시작분, 끝분)]"""
+    out = []
+    for part in env("TEXT_SLOTS", DEFAULT_TEXT_SLOTS).split(","):
+        part = part.strip()
+        if not part or "=" not in part:
+            continue
+        name, w = part.split("=", 1)
+        try:
+            a, b = w.split("-")
+            h1, m1 = map(int, a.split(":")); h2, m2 = map(int, b.split(":"))
+        except ValueError:
+            log(f"  TEXT_SLOTS 형식 오류({part}) — 무시"); continue
+        out.append((name.strip().upper(), h1 * 60 + m1, h2 * 60 + m2))
+    return out
+
+
+def current_text_slot(now):
+    forced = env("TEXT_SLOT").upper()
+    if forced:
+        return forced, f"슬롯 {forced} 강제"
+    cur = now.hour * 60 + now.minute
+    for name, a, b in text_slots():
+        if a <= cur <= b:
+            return name, f"슬롯 {name} 창 안 ({now:%H:%M} KST)"
+    return None, f"열린 단문 슬롯 없음 ({now:%H:%M} KST)"
+
+
+def fetch_text_rows(day):
+    body = {"filter": {"and": [
+        {"property": "승인", "checkbox": {"equals": True}},
+        {"property": "게시 예정일", "date": {"equals": day}},
+    ]}}
+    r = requests.post(f"{NOTION}/data_sources/{env('NOTION_DATA_SOURCE_ID')}/query", headers=nh(), json=body, timeout=TIMEOUT)
+    if r.status_code >= 400:
+        raise ApiError(f"노션 조회 실패 {r.status_code}: {r.text[:400]}")
+    rows = []
+    for pg in r.json().get("results", []):
+        P = pg["properties"]
+        rows.append({"id": pg["id"], "title": title(P.get("후킹 제목", {})),
+                     "folder": rich(P.get("미디어 폴더", {})),
+                     "text": {s: rich(P.get(f"스레드 단문{s}", {})) for s in "ABC"},
+                     "url": {s: (P.get(f"단문{s} URL", {}) or {}).get("url") for s in "ABC"},
+                     "log": rich(P.get("단문 로그", {}))})
+    return rows
+
+
+def clean_short_text(t):
+    """해시태그·링크 제거, 3줄 이상 연속 빈 줄 정리, 500자 상한."""
+    lines = []
+    for ln in (t or "").replace("\r", "").split("\n"):
+        s = ln.strip()
+        if s.startswith("#") and all(w.startswith("#") for w in s.split()):
+            continue
+        s = re.sub(r"https?://\S+", "", s).rstrip()
+        lines.append(s)
+    out = re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+    return out[:500]
+
+
+def run_text(now):
+    slot, why = current_text_slot(now)
+    log("  " + why)
+    if not slot:
+        return 0
+    th_uid, th_tok = env("TH_USER_ID"), env("TH_ACCESS_TOKEN")
+    if not (th_uid and th_tok):
+        log("  Threads 자격증명 없음"); return 1
+    day = env("TEXT_DATE") or now.date().isoformat()
+    rows = fetch_text_rows(day)
+    if not rows:
+        log(f"  {day} 게시 예정 승인 행 없음. 종료."); return 0
+    failed = 0
+    for row in rows:
+        text = clean_short_text(row["text"].get(slot))
+        if row["url"].get(slot):
+            log(f"  ▶ {row['title']} 단문{slot} 이미 게시됨 — 건너뜀"); continue
+        if not text:
+            log(f"  ▶ {row['title']} 단문{slot} 본문 비어 있음 — 건너뜀"); continue
+        log(f"  ▶ {row['title']} 단문{slot} ({len(text)}자) 게시")
+        stamp = dt.datetime.now(KST).strftime("%Y-%m-%d %H:%M")
+        try:
+            url = th_text_only(th_uid, th_tok, text)
+            log(f"  ✅ 단문{slot} {url}")
+            props = {f"단문{slot} URL": {"url": url},
+                     "단문 로그": txt((row["log"] + "\n" if row["log"] else "") + f"[{stamp}] {slot} 성공" + (" (DRY RUN)" if DRY else ""))}
+        except Exception as e:
+            failed += 1
+            log(f"  ❌ 단문{slot}: {e}")
+            props = {"단문 로그": txt((row["log"] + "\n" if row["log"] else "") + f"[{stamp}] {slot} 실패: {e}")}
+        update_row(row["id"], props)
+        break  # 하루 한 회차만
+    return 1 if failed else 0
+
+
 def in_window(now):
     """POST_WINDOW_KST="20:00-23:59" 처럼 주면 그 시간대(KST) 밖에서는 게시하지 않는다.
     GitHub 예약 실행이 1.5~4시간씩 늦게 도는 일이 잦아서(34호 스레드가 새벽 1:23에 나감), 여러 개의 cron 슬롯을 두고
@@ -494,6 +599,8 @@ def main():
     ch = channels()
     now = dt.datetime.now(KST)
     log(f"크로싱투데이 자동 게시 시작 {now:%Y-%m-%d %H:%M} KST  채널={','.join(sorted(ch))}  DRY_RUN={DRY}")
+    if "text" in ch:
+        return run_text(now)
     ok, why = in_window(now)
     if why:
         log("  " + why)

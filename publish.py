@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-크로싱투데이 자동 게시 — GitHub Actions에서 실행 (v5: v4 + 스레드 텍스트 단문 슬롯 A/B/C)
+크로싱투데이 자동 게시 — GitHub Actions에서 실행 (v5.1: v4 + 스레드 텍스트 단문 슬롯 A/B/C + CDN 캐시 예열·재시도)
 
 v4에서 바뀐 것 (2026-09-11 진단 → 0단계)
   1. 채널 분리 실행: CHANNELS=ig (아침 06:40 KST) / CHANNELS=threads (밤 21:00 KST) / CHANNELS=ig,reels,threads (한 번에)
@@ -126,7 +126,15 @@ def ig_carousel(host, uid, token, urls, caption):
         raise ApiError(f"인스타 캐러셀은 2~10장 (현재 {len(urls)})")
     kids = []
     for i, u in enumerate(urls, 1):
-        kids.append(call("POST", f"{host}/{uid}/media", image_url=u, is_carousel_item="true", access_token=token)["id"])
+        for attempt in range(3):
+            try:
+                kids.append(call("POST", f"{host}/{uid}/media", image_url=u, is_carousel_item="true", access_token=token)["id"])
+                break
+            except ApiError as e:
+                if attempt == 2 or "2207052" not in str(e) and "9004" not in str(e):
+                    raise
+                log(f"  IG 슬라이드 {i} 미디어 가져오기 실패 — 15초 후 재시도 ({attempt+1}/3)")
+                time.sleep(15)
         log(f"  IG 슬라이드 {i}/{len(urls)} 컨테이너 OK")
     c = call("POST", f"{host}/{uid}/media", media_type="CAROUSEL", children=",".join(kids), caption=caption, access_token=token)
     wait_ready(f"{host}/{c['id']}", token)
@@ -316,11 +324,26 @@ def media_urls(folder):
         reel_url = public_url(reel) if reel else None
         log(f"  공개 URL: {urls[0]}")
         if not DRY:
-            for u in urls[:1] + ([reel_url] if reel_url else []):
-                r = requests.head(u, timeout=30, allow_redirects=True)
-                ct = r.headers.get("content-type", "")
-                if r.status_code != 200 or not (ct.startswith("image/") or ct.startswith("video/")):
-                    raise ApiError(f"공개 URL 확인 실패 {u} → HTTP {r.status_code} content-type={ct}")
+            # 모든 슬라이드를 미리 한 번씩 받아 CDN 캐시를 데운다. 새 커밋 직후 jsDelivr가 아직 파일을 안 가져온 상태에서
+            # Meta가 슬라이드 URL을 읽으면 "Only photo or video can be accepted"(9004/2207052)로 실패한다 — 46호 9/30 실측
+            for u in urls + ([reel_url] if reel_url else []):
+                ok = False
+                for attempt in range(4):
+                    try:
+                        r = requests.get(u, timeout=60, allow_redirects=True, stream=True)
+                        ct = r.headers.get("content-type", "")
+                        for _ in r.iter_content(65536):
+                            pass
+                        r.close()
+                        if r.status_code == 200 and (ct.startswith("image/") or ct.startswith("video/")):
+                            ok = True; break
+                        log(f"  CDN 준비 안 됨({r.status_code} {ct}) {u.rsplit('/', 1)[-1]} — {8*(attempt+1)}초 후 재시도")
+                    except Exception as e:
+                        log(f"  CDN 확인 오류({e}) — 재시도")
+                    time.sleep(8 * (attempt + 1))
+                if not ok:
+                    raise ApiError(f"공개 URL 확인 실패 {u}")
+            log(f"  공개 URL {len(urls)}장 CDN 캐시 확인 완료")
     return urls, reel_url
 
 
@@ -480,7 +503,7 @@ def publish_row(row, ch):
 
 # ---------------- 스레드 단문 (텍스트 전용, v5) ----------------
 
-DEFAULT_TEXT_SLOTS = "A=07:00-09:30,B=12:00-14:30,C=17:30-20:00"
+DEFAULT_TEXT_SLOTS = "A=06:30-11:30,B=12:00-16:00,C=16:30-20:00"
 
 
 def text_slots():

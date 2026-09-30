@@ -4,15 +4,20 @@ name: 크로싱투데이 자동 게시
 # 그래서 슬롯을 여러 개 두고, publish.py 가 POST_WINDOW_KST 창 안에 들어온 첫 실행만 게시한다 (이미 URL 있으면 건너뜀).
 on:
   schedule:
-    # 인스타 — 목표 06:40 KST, 창 06:30~09:30. 슬롯 21:40/22:10/22:40/23:10 UTC
+    # 인스타 + 단문 A — 창 06:30~11:30 KST. GitHub 지연이 3~4시간(9/29·30 실측: 06:40 슬롯이 10:13·09:44에 실행)이라
+    # 05:10 KST부터 30분 간격 11슬롯. 창 안 첫 실행만 게시
+    - cron: "10 20 * * *"
+    - cron: "40 20 * * *"
+    - cron: "10 21 * * *"
     - cron: "40 21 * * *"
     - cron: "10 22 * * *"
     - cron: "40 22 * * *"
     - cron: "10 23 * * *"
-    # 스레드 단문 A(아침 07:00~09:30) 보강 슬롯 — 위 인스타 슬롯이 늦게 돌 때 대비
     - cron: "40 23 * * *"
     - cron: "10 0 * * *"
-    # 스레드 단문 B(점심 12:00~14:30) — 10:07 KST부터 30분 간격 (지연 1.5~4h 감안)
+    - cron: "40 0 * * *"
+    - cron: "10 1 * * *"
+    # 스레드 단문 B(점심 12:00~16:00) — 10:07 KST부터 30분 간격 (지연 3~4h 감안)
     - cron: "7 1 * * *"
     - cron: "37 1 * * *"
     - cron: "7 2 * * *"
@@ -22,7 +27,8 @@ on:
     - cron: "7 4 * * *"
     - cron: "37 4 * * *"
     - cron: "7 5 * * *"
-    # 스레드 — 목표 21:00 KST (이 슬롯들이 단문 C 17:30~20:00 창도 겸함), 창 20:30~23:50. GitHub 지연이 4~6시간이라 15:05 KST부터 30분 간격 14슬롯 (창 밖 실행은 publish.py가 건너뜀)
+    - cron: "37 5 * * *"
+    # 스레드 — 목표 21:00 KST (이 슬롯들이 단문 C 16:30~20:00 창도 겸함), 창 20:30~23:50. GitHub 지연이 4~6시간이라 15:05 KST부터 30분 간격 14슬롯 (창 밖 실행은 publish.py가 건너뜀)
     - cron: "5 6 * * *"
     - cron: "35 6 * * *"
     - cron: "5 7 * * *"
@@ -93,10 +99,10 @@ jobs:
       - run: pip install requests
 
       - name: 인스타 게시 (아침)
-        if: contains(fromJSON('["40 21 * * *","10 22 * * *","40 22 * * *","10 23 * * *"]'), github.event.schedule) || github.event.inputs.mode == 'ig' || github.event.inputs.mode == 'all'
+        if: contains(fromJSON('["10 20 * * *","40 20 * * *","10 21 * * *","40 21 * * *","10 22 * * *","40 22 * * *","10 23 * * *","40 23 * * *","10 0 * * *","40 0 * * *","10 1 * * *"]'), github.event.schedule) || github.event.inputs.mode == 'ig' || github.event.inputs.mode == 'all'
         env:
           CHANNELS: ig,reels
-          POST_WINDOW_KST: ${{ github.event_name == 'schedule' && '06:30-09:30' || '' }}
+          POST_WINDOW_KST: ${{ github.event_name == 'schedule' && '06:30-11:30' || '' }}
         run: python publish.py
 
       - name: 스레드 게시 (밤)
@@ -112,7 +118,7 @@ jobs:
         if: ${{ !cancelled() && (github.event_name == 'schedule' || github.event.inputs.mode == 'text') }}
         env:
           CHANNELS: text
-          TEXT_SLOTS: ${{ vars.TEXT_SLOTS || 'A=07:00-09:30,B=12:00-14:30,C=17:30-20:00' }}
+          TEXT_SLOTS: ${{ vars.TEXT_SLOTS || 'A=06:30-11:30,B=12:00-16:00,C=16:30-20:00' }}
           TEXT_SLOT: ${{ github.event.inputs.text_slot || '' }}
         run: python publish.py
 

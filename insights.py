@@ -258,6 +258,7 @@ def fetch_posted_rows():
                      "ig": (P.get("게시 URL", {}) or {}).get("url") or "",
                      "reel": (P.get("릴스 게시 URL", {}) or {}).get("url") or "",
                      "th": (P.get("스레드 URL", {}) or {}).get("url") or "",
+                     "short": {k: (P.get(f"단문{k} URL", {}) or {}).get("url") or "" for k in "ABC"},
                      "cover": ((P.get("표지", {}) or {}).get("select") or {}).get("name") or "",
                      "format": rich(P.get("포맷", {})),
                      "date": ((P.get("게시 예정일", {}) or {}).get("date") or {}).get("start") or pg.get("created_time", "")[:10]})
@@ -353,10 +354,28 @@ def main():
                 if v:
                     props[col] = v
             comments += th_replies(media, th_tok, since48)
+        # ---- 스레드 텍스트 단문 A/B/C (9/29 도입) — 표지 글과 비교하려고 따로 센다 ----
+        s_likes = s_replies = 0
+        for k, url in row.get("short", {}).items():
+            m = TH_CODE.search(url)
+            if not (m and m.group(1) in th_idx):
+                continue
+            media = th_idx[m.group(1)]
+            ins = th_insights(media, th_tok)
+            v = num(ins.get("views"))
+            if v:
+                props[f"단문{k} 조회수"] = v
+            rec[f"short_{k}"] = ins.get("views")
+            s_likes += int(ins.get("likes") or 0)
+            s_replies += int(ins.get("replies") or 0)
+            comments += th_replies(media, th_tok, since48)
+        if any(row.get("short", {}).values()):
+            props["단문 좋아요"] = {"number": s_likes}
+            props["단문 답글"] = {"number": s_replies}
         if props:
             props["지표 갱신"] = {"date": {"start": now.date().isoformat()}}
             update_row(row["id"], props)
-            log(f" ✓ {row['title'][:30]}  IG {rec.get('ig_views')}  TH {rec.get('th_views')}")
+            log(f" ✓ {row['title'][:30]}  IG {rec.get('ig_views')}  TH {rec.get('th_views')}  단문 A/B/C {rec.get('short_A')}/{rec.get('short_B')}/{rec.get('short_C')}")
             table.append(rec)
 
     # ---- 오늘의 답글 페이지 ----

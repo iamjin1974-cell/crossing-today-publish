@@ -149,7 +149,8 @@ TAG_RE = re.compile(r"#([\w가-힣]+)")
 
 def rewrite_hashtags(caption):
     """캡션 끝의 해시태그 전용 줄을 떼어내고, 기본 세트 + 출처 태그로 다시 붙인다."""
-    if not flag("HASHTAG_REWRITE", "true"):
+    # v6 (2026-10-17): 동기부여 전환 — 기본은 캡션에 쓴 해시태그를 그대로 둔다. HASHTAG_MODE=rewrite 일 때만 예전 고정 세트로 교체
+    if not flag("HASHTAG_REWRITE", "true") or env("HASHTAG_MODE", "caption").lower() != "rewrite":
         return caption
     base = env("HASHTAG_SET", DEFAULT_HASHTAGS).split()
     sources = set(env("SOURCE_TAGS", DEFAULT_SOURCE_TAGS).split())
@@ -379,6 +380,7 @@ def fetch_due_rows():
                      "threads_caption": rich(P.get("스레드 캡션", {})), "folder": rich(P.get("미디어 폴더", {})),
                      "music_kw": rich(P.get("음악 키워드", {})),
                      "reel_on": bool((P.get("릴스", {}) or {}).get("checkbox")),
+                     "reel_only": rich(P.get("포맷", {})).strip() == "릴스",
                      "already": (P.get("게시 URL", {}) or {}).get("url"),
                      "already_reel": (P.get("릴스 게시 URL", {}) or {}).get("url"),
                      "already_th": (P.get("스레드 URL", {}) or {}).get("url")})
@@ -424,6 +426,8 @@ def publish_row(row, ch):
             errors.append("IG 자격증명 없음")
         elif row["already"]:
             log("  IG 캐러셀 이미 게시됨 — 건너뜀")
+        elif row.get("reel_only"):
+            log("  포맷=릴스 — 캐러셀 없이 릴스만 게시")
         else:
             try:
                 res["ig"] = ig_carousel(ig_host, ig_uid, ig_tok, urls, caption); log(f"  ✅ IG 캐러셀 {res['ig']}")
@@ -436,7 +440,7 @@ def publish_row(row, ch):
             log("  IG 릴스 이미 게시됨 — 건너뜀")
         elif not flag("POST_REELS", "true"):
             log("  릴스: 전역 OFF")
-        elif not row.get("reel_on"):
+        elif not (row.get("reel_on") or row.get("reel_only")):
             log("  릴스: 행의 '릴스' 체크 없음 — 게시 안 함")
         elif not reel_url:
             log("  릴스: reel.mp4 없음")
@@ -493,9 +497,10 @@ def publish_row(row, ch):
     if res.get("th") and not row.get("already_th"):
         props["스레드 URL"] = {"url": res["th"]}
     hard = [e for e in errors if not e.startswith("릴스 음악")]
-    if res.get("ig") and res.get("th") and not hard:
+    ig_done = res.get("ig") or (row.get("reel_only") and res.get("reel"))
+    if ig_done and res.get("th") and not hard:
         props["상태"] = {"status": {"name": "완료"}}
-    elif res.get("ig") or res.get("th"):
+    elif ig_done or res.get("th"):
         props["상태"] = {"status": {"name": "진행 중"}}
     update_row(row["id"], props)
     return errors

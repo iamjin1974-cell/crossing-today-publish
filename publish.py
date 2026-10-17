@@ -627,8 +627,14 @@ def main():
     ch = channels()
     now = dt.datetime.now(KST)
     log(f"크로싱투데이 자동 게시 시작 {now:%Y-%m-%d %H:%M} KST  채널={','.join(sorted(ch))}  DRY_RUN={DRY}")
-    if "text" in ch:
-        return run_text(now)
+    if "text" in ch or "replies" in ch:
+        rc = run_text(now) if "text" in ch else 0
+        try:  # v6.1: 댓글 수집·자동 답글 (reply.py) — 실패해도 게시 결과에 영향 없음
+            import reply
+            reply.run()
+        except Exception as e:
+            log(f"댓글 단계 오류(무시): {e}")
+        return rc
     ok, why = in_window(now)
     if why:
         log("  " + why)

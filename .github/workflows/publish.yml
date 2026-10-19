@@ -48,7 +48,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "ig | threads | all | insights | text"
+        description: "ig | threads | all | insights | text | musicprobe"
         default: "all"
       text_slot:
         description: "mode=text 일 때 A|B|C 로 슬롯 강제 (비우면 현재 시각으로 판단)"
@@ -56,6 +56,12 @@ on:
       dry_run:
         description: "true면 실제 게시 없이 로그만"
         default: "false"
+      probe_queries:
+        description: "mode=musicprobe 검색어 (쉼표 구분)"
+        default: "심야 역전다방,심야역전다방,Soul City Radio,Adrian Midnight"
+      probe_page:
+        description: "mode=musicprobe 결과를 적을 노션 페이지 ID"
+        default: ""
 
 concurrency:
   group: publish
@@ -121,6 +127,13 @@ jobs:
           TEXT_SLOTS: ${{ vars.TEXT_SLOTS || 'A=06:30-11:30,B=12:00-16:00,C=16:30-20:00' }}
           TEXT_SLOT: ${{ github.event.inputs.text_slot || '' }}
         run: python publish.py
+
+      - name: 인스타 음원 라이브러리 확인
+        if: github.event.inputs.mode == 'musicprobe'
+        env:
+          PROBE_QUERIES: ${{ github.event.inputs.probe_queries }}
+          PROBE_PAGE: ${{ github.event.inputs.probe_page }}
+        run: python musicprobe.py
 
       - name: 성과 수집
         if: github.event.schedule == '10 14 * * *' || github.event.inputs.mode == 'insights'

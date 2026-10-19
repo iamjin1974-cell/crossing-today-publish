@@ -198,6 +198,8 @@ def pick_audio(host, uid, token, keyword):
         except ApiError as e:
             log(f"  지정 audio_id 조회 실패({e}) — 검색으로 대체")
             kw = ""
+    if kw.lower().startswith("artist:"):
+        return pick_artist(host, uid, token, kw.split(":", 1)[1].strip())
     tries = [q for q in (kw, env("MUSIC_DEFAULT_QUERY", "")) if q] + [None]
     for q in tries:
         items = search_audio(host, uid, token, q)
@@ -208,6 +210,33 @@ def pick_audio(host, uid, token, keyword):
             return a
         log(f"  음악 검색 결과 없음 ({q})")
     return None
+
+
+def _norm(t):
+    return "".join((t or "").lower().split())
+
+
+def artist_tracks(host, uid, token, name):
+    """아티스트 이름으로 검색해 display_artist 가 그 이름인 곡만 (제목순, 20초 이상)."""
+    seen, out = set(), []
+    for q in (name, name.replace(" ", "")):
+        for a in search_audio(host, uid, token, q, limit=50):
+            if a.get("audio_id") and _norm(name) in _norm(a.get("display_artist")) and a["audio_id"] not in seen:
+                if int(a.get("duration_in_ms") or 0) >= 20000:
+                    seen.add(a["audio_id"]); out.append(a)
+    return sorted(out, key=lambda a: a.get("title", ""))
+
+
+def pick_artist(host, uid, token, name):
+    """'음악 키워드' = artist:이름 — Kim 본인 곡(인스타 음원 라이브러리)만 쓴다. 날짜마다 돌아가며 한 곡.
+    못 찾으면 None (트렌딩으로 대체하지 않음)."""
+    tracks = artist_tracks(host, uid, token, name)
+    if not tracks:
+        log(f"  음악: '{name}' 곡을 인스타 라이브러리에서 못 찾음")
+        return None
+    a = tracks[dt.datetime.now(KST).timetuple().tm_yday % len(tracks)]
+    log(f"  음악 선택 (아티스트 {name}, {len(tracks)}곡 중): {a.get('title')} — {a.get('display_artist')} [{a['audio_id']}]")
+    return a
 
 
 def audio_label(a):

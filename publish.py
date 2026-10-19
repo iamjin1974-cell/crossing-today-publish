@@ -475,13 +475,16 @@ def publish_row(row, ch):
             log("  릴스: reel.mp4 없음")
         else:
             audio = None
-            if music_ok and flag("MUSIC_ENABLED", "true"):
+            own_audio = (row.get("music_kw") or "").strip().lower() in ("none", "원곡", "영상음원")
+            if own_audio:
+                log("  음악: 영상에 든 음원 그대로 (Kim 곡 합침) — 라이브러리 음악 안 붙임")
+            elif music_ok and flag("MUSIC_ENABLED", "true"):
                 try:
                     audio = pick_audio(ig_host, ig_uid, ig_tok, row.get("music_kw"))
                 except Exception as e:
                     log(f"  음악 검색 오류: {e}")
             skip = False
-            if not audio:
+            if not audio and not own_audio:
                 if flag("MUSIC_REQUIRED", "false"):
                     errors.append("IG 릴스: 음악을 찾지 못해 게시 보류"); skip = True
                 else:

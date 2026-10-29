@@ -213,6 +213,46 @@
    "released": false,
    "added": "2026-10-29",
    "source": "속아줄게.wav"
+  },
+  {
+   "title": "손 잡아도 되나",
+   "album": "2집",
+   "path": "music/2jip/09_손 잡아도 되나.mp3",
+   "chorus": 133.0,
+   "dur": 178.8,
+   "released": false,
+   "added": "2026-10-29",
+   "source": "손 잡아도 되나.wav"
+  },
+  {
+   "title": "오늘 무슨 날이게",
+   "album": "2집",
+   "path": "music/2jip/10_오늘 무슨 날이게.mp3",
+   "chorus": 134.0,
+   "dur": 180.0,
+   "released": false,
+   "added": "2026-10-29",
+   "source": "오늘 무슨 날이게.wav"
+  },
+  {
+   "title": "우리 사귀는 거 맞제",
+   "album": "2집",
+   "path": "music/2jip/11_우리 사귀는 거 맞제.mp3",
+   "chorus": 122.0,
+   "dur": 171.0,
+   "released": false,
+   "added": "2026-10-29",
+   "source": "우리 사귀는 거 맞제.wav"
+  },
+  {
+   "title": "잘 살아",
+   "album": "2집",
+   "path": "music/2jip/12_잘 살아.mp3",
+   "chorus": 100.0,
+   "dur": 191.3,
+   "released": false,
+   "added": "2026-10-29",
+   "source": "잘 살아 (Add Vocal).wav"
   }
  ]
 }

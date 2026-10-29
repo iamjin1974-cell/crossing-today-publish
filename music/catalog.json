@@ -140,9 +140,10 @@
    "path": "music/2jip/01_거기 날씨 어때.mp3",
    "chorus": 133.5,
    "dur": 189.6,
-   "released": false,
+   "released": true,
    "added": "2026-10-29",
-   "source": "거기 날씨 어때_.wav"
+   "source": "거기 날씨 어때_.wav",
+   "released_on": "2026-10-26"
   },
   {
    "title": "그게 사랑이야",
@@ -150,9 +151,10 @@
    "path": "music/2jip/02_그게 사랑이야.mp3",
    "chorus": 138.0,
    "dur": 184.4,
-   "released": false,
+   "released": true,
    "added": "2026-10-29",
-   "source": "그게 사랑이야.wav"
+   "source": "그게 사랑이야.wav",
+   "released_on": "2026-10-26"
   },
   {
    "title": "니 내 좋아하나",
@@ -160,9 +162,10 @@
    "path": "music/2jip/03_니 내 좋아하나.mp3",
    "chorus": 143.0,
    "dur": 188.5,
-   "released": false,
+   "released": true,
    "added": "2026-10-29",
-   "source": "니 내 좋아하나.wav"
+   "source": "니 내 좋아하나.wav",
+   "released_on": "2026-10-26"
   },
   {
    "title": "바다는 왜 보러 왔어",
@@ -170,9 +173,10 @@
    "path": "music/2jip/04_바다는 왜 보러 왔어.mp3",
    "chorus": 122.0,
    "dur": 181.2,
-   "released": false,
+   "released": true,
    "added": "2026-10-29",
-   "source": "바다는 왜 보러 왔어.wav"
+   "source": "바다는 왜 보러 왔어.wav",
+   "released_on": "2026-10-26"
   },
   {
    "title": "밥 먹었나?",
@@ -180,9 +184,10 @@
    "path": "music/2jip/05_밥 먹었나.mp3",
    "chorus": 106.5,
    "dur": 171.6,
-   "released": false,
+   "released": true,
    "added": "2026-10-29",
-   "source": "밥 먹었나_.wav"
+   "source": "밥 먹었나_.wav",
+   "released_on": "2026-10-26"
   },
   {
    "title": "불 켜놨더라",
@@ -190,9 +195,10 @@
    "path": "music/2jip/06_불 켜놨더라.mp3",
    "chorus": 142.5,
    "dur": 189.5,
-   "released": false,
+   "released": true,
    "added": "2026-10-29",
-   "source": "불 켜놨더라.wav"
+   "source": "불 켜놨더라.wav",
+   "released_on": "2026-10-26"
   },
   {
    "title": "사랑이 뭐라고",
@@ -200,9 +206,10 @@
    "path": "music/2jip/07_사랑이 뭐라고.mp3",
    "chorus": 130.5,
    "dur": 179.9,
-   "released": false,
+   "released": true,
    "added": "2026-10-29",
-   "source": "사랑이 뭐라고.wav"
+   "source": "사랑이 뭐라고.wav",
+   "released_on": "2026-10-26"
   },
   {
    "title": "속아줄게",
@@ -210,9 +217,10 @@
    "path": "music/2jip/08_속아줄게.mp3",
    "chorus": 143.5,
    "dur": 189.6,
-   "released": false,
+   "released": true,
    "added": "2026-10-29",
-   "source": "속아줄게.wav"
+   "source": "속아줄게.wav",
+   "released_on": "2026-10-26"
   },
   {
    "title": "손 잡아도 되나",
@@ -220,9 +228,10 @@
    "path": "music/2jip/09_손 잡아도 되나.mp3",
    "chorus": 133.0,
    "dur": 178.8,
-   "released": false,
+   "released": true,
    "added": "2026-10-29",
-   "source": "손 잡아도 되나.wav"
+   "source": "손 잡아도 되나.wav",
+   "released_on": "2026-10-26"
   },
   {
    "title": "오늘 무슨 날이게",
@@ -230,9 +239,10 @@
    "path": "music/2jip/10_오늘 무슨 날이게.mp3",
    "chorus": 134.0,
    "dur": 180.0,
-   "released": false,
+   "released": true,
    "added": "2026-10-29",
-   "source": "오늘 무슨 날이게.wav"
+   "source": "오늘 무슨 날이게.wav",
+   "released_on": "2026-10-26"
   },
   {
    "title": "우리 사귀는 거 맞제",
@@ -240,9 +250,10 @@
    "path": "music/2jip/11_우리 사귀는 거 맞제.mp3",
    "chorus": 122.0,
    "dur": 171.0,
-   "released": false,
+   "released": true,
    "added": "2026-10-29",
-   "source": "우리 사귀는 거 맞제.wav"
+   "source": "우리 사귀는 거 맞제.wav",
+   "released_on": "2026-10-26"
   },
   {
    "title": "잘 살아",
@@ -250,9 +261,10 @@
    "path": "music/2jip/12_잘 살아.mp3",
    "chorus": 100.0,
    "dur": 191.3,
-   "released": false,
+   "released": true,
    "added": "2026-10-29",
-   "source": "잘 살아 (Add Vocal).wav"
+   "source": "잘 살아 (Add Vocal).wav",
+   "released_on": "2026-10-26"
   },
   {
    "title": "니만 늦은 거 아니야",
@@ -270,9 +282,10 @@
    "path": "music/3jip/02_떨어졌어.mp3",
    "chorus": 115.0,
    "dur": 161.0,
-   "released": false,
+   "released": true,
    "added": "2026-10-29",
-   "source": "떨어졌어.wav"
+   "source": "떨어졌어.wav",
+   "released_on": "2026-10-29"
   },
   {
    "title": "아빠가 삐졌다",

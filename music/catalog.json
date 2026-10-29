@@ -253,6 +253,46 @@
    "released": false,
    "added": "2026-10-29",
    "source": "잘 살아 (Add Vocal).wav"
+  },
+  {
+   "title": "니만 늦은 거 아니야",
+   "album": "3집",
+   "path": "music/3jip/01_니만 늦은 거 아니야.mp3",
+   "chorus": 70.5,
+   "dur": 163.9,
+   "released": false,
+   "added": "2026-10-29",
+   "source": "니만 늦은 거 아니야.wav"
+  },
+  {
+   "title": "떨어졌어",
+   "album": "3집",
+   "path": "music/3jip/02_떨어졌어.mp3",
+   "chorus": 115.0,
+   "dur": 161.0,
+   "released": false,
+   "added": "2026-10-29",
+   "source": "떨어졌어.wav"
+  },
+  {
+   "title": "아빠가 삐졌다",
+   "album": "3집",
+   "path": "music/3jip/03_아빠가 삐졌다.mp3",
+   "chorus": 127.0,
+   "dur": 179.8,
+   "released": false,
+   "added": "2026-10-29",
+   "source": "아빠가 삐졌다.wav"
+  },
+  {
+   "title": "엄마! 나 잘 살아~",
+   "album": "3집",
+   "path": "music/3jip/04_엄마! 나 잘 살아~.mp3",
+   "chorus": 85.0,
+   "dur": 170.0,
+   "released": false,
+   "added": "2026-10-29",
+   "source": "엄마! 나 잘 살아~.wav"
   }
  ]
 }

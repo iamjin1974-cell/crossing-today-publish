@@ -1,0 +1,178 @@
+{
+ "artist": "심야 역전다방",
+ "note": "크로싱투데이 릴스 음악 목록. reel.py가 노션 '음악' 칸 사용 횟수로 골고루 고름. 새 곡은 K6 mv_pipeline\\audio\\N집에 넣으면 데몬이 하루 한 번 자동 등록, 유튜브 공개되면 released=true.",
+ "songs": [
+  {
+   "title": "막차",
+   "album": "1집",
+   "path": "music/1jip/01_막차.mp3",
+   "chorus": 127.0,
+   "dur": 191.7,
+   "released": true,
+   "released_on": "2026-10-07",
+   "added": "2026-10-30",
+   "source": "01_막차.mp3"
+  },
+  {
+   "title": "짤렸어? 그래서 뭐!",
+   "album": "1집",
+   "path": "music/1jip/02_짤렸어그래서뭐.mp3",
+   "chorus": 99.0,
+   "dur": 144.9,
+   "released": true,
+   "released_on": "2026-10-07",
+   "added": "2026-10-30",
+   "source": "02_짤렸어그래서뭐.mp3"
+  },
+  {
+   "title": "아직 안 접었다!",
+   "album": "1집",
+   "path": "music/1jip/03_아직안접었다.mp3",
+   "chorus": 122.5,
+   "dur": 227.3,
+   "released": true,
+   "released_on": "2026-10-07",
+   "added": "2026-10-30",
+   "source": "03_아직안접었다.mp3"
+  },
+  {
+   "title": "개찰구 앞 여섯 시",
+   "album": "1집",
+   "path": "music/1jip/04_개찰구앞여섯시.mp3",
+   "chorus": 170.5,
+   "dur": 227.7,
+   "released": true,
+   "released_on": "2026-10-07",
+   "added": "2026-10-30",
+   "source": "04_개찰구앞여섯시.mp3"
+  },
+  {
+   "title": "말은 해봤어?",
+   "album": "1집",
+   "path": "music/1jip/05_말은해봤어.mp3",
+   "chorus": 105.5,
+   "dur": 246.9,
+   "released": true,
+   "released_on": "2026-10-07",
+   "added": "2026-10-30",
+   "source": "05_말은해봤어.mp3"
+  },
+  {
+   "title": "아직 이쁘네",
+   "album": "1집",
+   "path": "music/1jip/06_아직 이쁘네.mp3",
+   "chorus": 165.0,
+   "dur": 228.0,
+   "released": true,
+   "released_on": "2026-10-07",
+   "added": "2026-10-30",
+   "source": "06_아직 이쁘네.mp3"
+  },
+  {
+   "title": "우리 아들 붙었다",
+   "album": "1집",
+   "path": "music/1jip/07_우리 아들 붙었다.mp3",
+   "chorus": 104.0,
+   "dur": 150.0,
+   "released": true,
+   "released_on": "2026-10-07",
+   "added": "2026-10-30",
+   "source": "07_우리 아들 붙었다.mp3"
+  },
+  {
+   "title": "난 왜 이럴까",
+   "album": "1집",
+   "path": "music/1jip/08_난 왜 이럴까.mp3",
+   "chorus": 92.0,
+   "dur": 165.7,
+   "released": true,
+   "released_on": "2026-10-07",
+   "added": "2026-10-30",
+   "source": "08_난 왜 이럴까.mp3"
+  },
+  {
+   "title": "그럴 수도 있어",
+   "album": "1집",
+   "path": "music/1jip/09_그럴 수도 있어.mp3",
+   "chorus": 59.0,
+   "dur": 156.8,
+   "released": true,
+   "released_on": "2026-10-07",
+   "added": "2026-10-30",
+   "source": "09_그럴 수도 있어.mp3"
+  },
+  {
+   "title": "전화 좀 해라",
+   "album": "1집",
+   "path": "music/1jip/10_전화 좀 해라.mp3",
+   "chorus": 98.0,
+   "dur": 159.0,
+   "released": true,
+   "released_on": "2026-10-07",
+   "added": "2026-10-30",
+   "source": "10_전화 좀 해라.mp3"
+  },
+  {
+   "title": "이게 되네!",
+   "album": "1집",
+   "path": "music/1jip/11_이게 되네!.mp3",
+   "chorus": 152.0,
+   "dur": 200.0,
+   "released": true,
+   "released_on": "2026-10-07",
+   "added": "2026-10-30",
+   "source": "11_이게 되네!.mp3"
+  },
+  {
+   "title": "한번 해봐",
+   "album": "1집",
+   "path": "music/1jip/12_한번 해봐.mp3",
+   "chorus": 145.5,
+   "dur": 178.8,
+   "released": true,
+   "released_on": "2026-10-07",
+   "added": "2026-10-30",
+   "source": "12_한번 해봐.mp3"
+  },
+  {
+   "title": "거기 날씨 어때?",
+   "album": "2집",
+   "path": "music/2jip/01_거기 날씨 어때.mp3",
+   "chorus": 133.5,
+   "dur": 189.6,
+   "released": false,
+   "added": "2026-10-29",
+   "source": "거기 날씨 어때_.wav"
+  },
+  {
+   "title": "그게 사랑이야",
+   "album": "2집",
+   "path": "music/2jip/02_그게 사랑이야.mp3",
+   "chorus": 138.0,
+   "dur": 184.4,
+   "released": false,
+   "added": "2026-10-29",
+   "source": "그게 사랑이야.wav"
+  },
+  {
+   "title": "니 내 좋아하나",
+   "album": "2집",
+   "path": "music/2jip/03_니 내 좋아하나.mp3",
+   "chorus": 143.0,
+   "dur": 188.5,
+   "released": false,
+   "added": "2026-10-29",
+   "source": "니 내 좋아하나.wav"
+  },
+  {
+   "title": "바다는 왜 보러 왔어",
+   "album": "2집",
+   "path": "music/2jip/04_바다는 왜 보러 왔어.mp3",
+   "chorus": 122.0,
+   "dur": 181.2,
+   "released": false,
+   "added": "2026-10-29",
+   "source": "바다는 왜 보러 왔어.wav"
+  }
+ ]
+}

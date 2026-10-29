@@ -173,6 +173,46 @@
    "released": false,
    "added": "2026-10-29",
    "source": "바다는 왜 보러 왔어.wav"
+  },
+  {
+   "title": "밥 먹었나?",
+   "album": "2집",
+   "path": "music/2jip/05_밥 먹었나.mp3",
+   "chorus": 106.5,
+   "dur": 171.6,
+   "released": false,
+   "added": "2026-10-29",
+   "source": "밥 먹었나_.wav"
+  },
+  {
+   "title": "불 켜놨더라",
+   "album": "2집",
+   "path": "music/2jip/06_불 켜놨더라.mp3",
+   "chorus": 142.5,
+   "dur": 189.5,
+   "released": false,
+   "added": "2026-10-29",
+   "source": "불 켜놨더라.wav"
+  },
+  {
+   "title": "사랑이 뭐라고",
+   "album": "2집",
+   "path": "music/2jip/07_사랑이 뭐라고.mp3",
+   "chorus": 130.5,
+   "dur": 179.9,
+   "released": false,
+   "added": "2026-10-29",
+   "source": "사랑이 뭐라고.wav"
+  },
+  {
+   "title": "속아줄게",
+   "album": "2집",
+   "path": "music/2jip/08_속아줄게.mp3",
+   "chorus": 143.5,
+   "dur": 189.6,
+   "released": false,
+   "added": "2026-10-29",
+   "source": "속아줄게.wav"
   }
  ]
 }

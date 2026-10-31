@@ -272,9 +272,10 @@
    "path": "music/3jip/01_니만 늦은 거 아니야.mp3",
    "chorus": 70.5,
    "dur": 163.9,
-   "released": false,
+   "released": true,
    "added": "2026-10-29",
-   "source": "니만 늦은 거 아니야.wav"
+   "source": "니만 늦은 거 아니야.wav",
+   "released_on": "2026-11-01"
   },
   {
    "title": "떨어졌어",

@@ -73,6 +73,20 @@ class ApiError(Exception):
     pass
 
 
+# 이번 실행의 채널별 결과 (레지스트리 '현재 상태' 기록용). ok: None=시도 안 함, True=전부 성공(permalink 받음), False=실패
+RUN = {"ig": None, "th": None, "links": [], "issues": []}
+
+
+def mark(chan, ok, link=None, err=None):
+    if ok and not link:
+        ok, err = False, err or f"{'인스타' if chan == 'ig' else '스레드'} permalink 못 받음"
+    RUN[chan] = ok if RUN[chan] is None else (RUN[chan] and ok)
+    if link:
+        RUN["links"].append(link)
+    if err:
+        RUN["issues"].append(str(err)[:160])
+
+
 def channels():
     raw = env("CHANNELS", "ig,reels,threads").lower()
     return {c.strip() for c in raw.split(",") if c.strip()}
@@ -452,7 +466,7 @@ def publish_row(row, ch):
     # ---- 인스타 캐러셀 ----
     if "ig" in ch:
         if not (ig_uid and ig_tok):
-            errors.append("IG 자격증명 없음")
+            errors.append("IG 자격증명 없음"); mark("ig", False, err="IG 자격증명 없음")
         elif row["already"]:
             log("  IG 캐러셀 이미 게시됨 — 건너뜀")
         elif row.get("reel_only"):
@@ -460,8 +474,9 @@ def publish_row(row, ch):
         else:
             try:
                 res["ig"] = ig_carousel(ig_host, ig_uid, ig_tok, urls, caption); log(f"  ✅ IG 캐러셀 {res['ig']}")
+                mark("ig", True, res["ig"])
             except Exception as e:
-                errors.append(f"IG 캐러셀: {e}")
+                errors.append(f"IG 캐러셀: {e}"); mark("ig", False, err=f"IG 캐러셀: {e}")
 
     # ---- 인스타 릴스 (행 스위치 + 전역 스위치 둘 다 켜져야) ----
     if "reels" in ch and ig_uid and ig_tok:
@@ -487,12 +502,14 @@ def publish_row(row, ch):
             if not audio and not own_audio:
                 if flag("MUSIC_REQUIRED", "false"):
                     errors.append("IG 릴스: 음악을 찾지 못해 게시 보류"); skip = True
+                    mark("ig", False, err="IG 릴스: 음악을 찾지 못해 게시 보류")
                 else:
                     errors.append("릴스 음악: 찾지 못해 무음 게시")
             if not skip:
                 try:
                     res["reel"] = ig_reel(ig_host, ig_uid, ig_tok, reel_url, caption, urls[0], audio)
                     log(f"  ✅ IG 릴스 {res['reel']}")
+                    mark("ig", True, res["reel"])
                     if audio:
                         res["music"] = audio_label(audio)
                 except Exception as e:
@@ -501,22 +518,24 @@ def publish_row(row, ch):
                         try:
                             res["reel"] = ig_reel(ig_host, ig_uid, ig_tok, reel_url, caption, urls[0], None)
                             log(f"  ✅ IG 릴스(무음) {res['reel']}"); errors.append(f"릴스 음악 첨부 실패: {e}")
+                            mark("ig", True, res["reel"])
                         except Exception as e2:
-                            errors.append(f"IG 릴스: {e2}")
+                            errors.append(f"IG 릴스: {e2}"); mark("ig", False, err=f"IG 릴스: {e2}")
                     else:
-                        errors.append(f"IG 릴스: {e}")
+                        errors.append(f"IG 릴스: {e}"); mark("ig", False, err=f"IG 릴스: {e}")
 
     # ---- 스레드 ----
     if "threads" in ch:
         if not (th_uid and th_tok):
-            errors.append("Threads 자격증명 없음")
+            errors.append("Threads 자격증명 없음"); mark("th", False, err="Threads 자격증명 없음")
         elif row.get("already_th"):
             log("  Threads 이미 게시됨 — 건너뜀")
         else:
             try:
                 res["th"] = th_post(th_uid, th_tok, urls, row["threads_caption"] or row["caption"][:500]); log(f"  ✅ Threads {res['th']}")
+                mark("th", True, res["th"])
             except Exception as e:
-                errors.append(f"Threads: {e}")
+                errors.append(f"Threads: {e}"); mark("th", False, err=f"Threads: {e}")
 
     stamp = dt.datetime.now(KST).strftime("%Y-%m-%d %H:%M KST")
     props = {"게시 로그": txt(f"[{stamp}] {'/'.join(sorted(ch))} " + ("성공" if not errors else "일부 실패: " + " | ".join(errors)) + (" (DRY RUN)" if DRY else ""))}
@@ -610,7 +629,7 @@ def run_text(now):
         return 0
     th_uid, th_tok = env("TH_USER_ID"), env("TH_ACCESS_TOKEN")
     if not (th_uid and th_tok):
-        log("  Threads 자격증명 없음"); return 1
+        log("  Threads 자격증명 없음"); mark("th", False, err="Threads 자격증명 없음"); return 1
     day = env("TEXT_DATE") or now.date().isoformat()
     rows = fetch_text_rows(day)
     if not rows:
@@ -627,11 +646,13 @@ def run_text(now):
         try:
             url = th_text_only(th_uid, th_tok, text)
             log(f"  ✅ 단문{slot} {url}")
+            mark("th", True, url)
             props = {f"단문{slot} URL": {"url": url},
                      "단문 로그": txt((row["log"] + "\n" if row["log"] else "") + f"[{stamp}] {slot} 성공" + (" (DRY RUN)" if DRY else ""))}
         except Exception as e:
             failed += 1
             log(f"  ❌ 단문{slot}: {e}")
+            mark("th", False, err=f"단문{slot}: {e}")
             props = {"단문 로그": txt((row["log"] + "\n" if row["log"] else "") + f"[{stamp}] {slot} 실패: {e}")}
         update_row(row["id"], props)
         break  # 하루 한 회차만
@@ -661,6 +682,8 @@ def main():
     log(f"크로싱투데이 자동 게시 시작 {now:%Y-%m-%d %H:%M} KST  채널={','.join(sorted(ch))}  DRY_RUN={DRY}")
     if "text" in ch or "replies" in ch:
         rc = run_text(now) if "text" in ch else 0
+        if "text" in ch:
+            report_registry(f"단문{current_text_slot(now)[0] or ''}")
         try:  # v6.1: 댓글 수집·자동 답글 (reply.py) — 실패해도 게시 결과에 영향 없음
             import reply
             reply.run()
@@ -693,10 +716,43 @@ def main():
         except Exception as e:
             failed += 1
             log(f"  ❌ {e}")
+            for c in ("ig", "th"):
+                if (c == "ig" and ch & {"ig", "reels"}) or (c == "th" and "threads" in ch):
+                    mark(c, False, err=f"{row['title'][:20]}: {e}")
             update_row(row["id"], {"게시 로그": txt(f"[{dt.datetime.now(KST):%Y-%m-%d %H:%M} KST] 실패: {e}")})
     if len(todo) > limit:
         log(f"※ 승인 대기 {len(todo)-limit}건 더 있음 — 다음 실행에서 이어서 게시")
+    report_registry(slot_label(ch))
     return 1 if failed else 0
+
+
+def slot_label(ch):
+    if ch & {"ig", "reels"} and "threads" in ch:
+        return "수동(인스타+스레드)"
+    if ch & {"ig", "reels"}:
+        return "아침(인스타)"
+    if "threads" in ch:
+        return "밤(스레드)"
+    return ",".join(sorted(ch))
+
+
+def report_registry(slot):
+    """v6.2 (2026-11-01): 게시를 시도한 실행이면 노션 레지스트리 '현재 상태' 칸을 덮어쓴다. 실패해도 게시 결과에 영향 없음."""
+    if RUN["ig"] is None and RUN["th"] is None:
+        return None  # 이번 실행에서 게시 시도 없음 (창 밖·대상 없음·이미 게시됨)
+    if DRY:
+        log("  [DRY] 레지스트리 기록 건너뜀"); return None
+    try:
+        import registry
+        ig_host, ig_tok, _ = ig_credentials()
+        ig_uid, th_uid, th_tok = env("IG_USER_ID"), env("TH_USER_ID"), env("TH_ACCESS_TOKEN")
+        ig_fn = (lambda d: registry.count_ig_today(ig_host, ig_uid, ig_tok, d)) if ig_uid and ig_tok else None
+        th_fn = (lambda d: registry.count_th_today(TH_HOST, th_uid, th_tok, d)) if th_uid and th_tok else None
+        return registry.report_publish(slot, RUN["ig"], RUN["th"], RUN["links"][-1] if RUN["links"] else None,
+                                       RUN["issues"], ig_fn, th_fn, log=log)
+    except Exception as e:
+        log(f"  레지스트리 단계 오류(무시): {e}")
+        return None
 
 
 if __name__ == "__main__":

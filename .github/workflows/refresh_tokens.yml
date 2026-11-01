@@ -19,3 +19,11 @@ jobs:
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           TH_ACCESS_TOKEN: ${{ secrets.TH_ACCESS_TOKEN }}
         run: python refresh_tokens.py
+
+      - name: 실패 시 레지스트리 '이상' 기록
+        # 어느 단계에서 실패해도(GH_PAT·Meta 갱신·설치) 노션 레지스트리 '현재 상태' 칸의 '이상'에 "토큰 갱신 실패 <날짜>"를 넣는다
+        if: failure()
+        continue-on-error: true
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: pip install requests && python registry.py token-fail

@@ -307,6 +307,16 @@
    "released": false,
    "added": "2026-10-29",
    "source": "엄마! 나 잘 살아~.wav"
+  },
+  {
+   "title": "할머니가 밥 먹고 가래",
+   "album": "3집",
+   "path": "music/3jip/05_할머니가 밥 먹고 가래.mp3",
+   "chorus": 122.0,
+   "dur": 169.2,
+   "released": false,
+   "added": "2026-11-02",
+   "source": "할머니가 밥 먹고 가래.wav"
   }
  ]
 }

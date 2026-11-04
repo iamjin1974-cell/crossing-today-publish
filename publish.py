@@ -161,8 +161,36 @@ def ig_carousel(host, uid, token, urls, caption):
 TAG_RE = re.compile(r"#([\w가-힣]+)")
 
 
+MAX_HASHTAGS = 5  # 2025-12~ 인스타그램 게시물당 해시태그 5개 제한
+
+
+def cap_hashtags(caption, limit=None):
+    """캡션 전체에서 해시태그를 앞에서부터 최대 limit개(중복 제외)만 남기고 나머지는 지운다."""
+    limit = int(env("MAX_HASHTAGS", str(MAX_HASHTAGS))) if limit is None else limit
+    seen = []
+
+    def keep(m):
+        t = m.group(0)
+        if t in seen:
+            return ""
+        if len(seen) < limit:
+            seen.append(t)
+            return t
+        return ""
+
+    out = re.sub(r"#[\w가-힣]+", keep, caption)
+    lines = [re.sub(r"[ \t]{2,}", " ", l).rstrip() for l in out.split("\n")]
+    while lines and lines[-1].strip() in ("", "."):
+        lines.pop()
+    return "\n".join(lines)
+
+
 def rewrite_hashtags(caption):
-    """캡션 끝의 해시태그 전용 줄을 떼어내고, 기본 세트 + 출처 태그로 다시 붙인다."""
+    """캡션 끝의 해시태그 전용 줄을 떼어내고, 기본 세트 + 출처 태그로 다시 붙인다. 결과는 항상 해시태그 5개 이하."""
+    return cap_hashtags(_rewrite_hashtags(caption))
+
+
+def _rewrite_hashtags(caption):
     # v6 (2026-10-17): 동기부여 전환 — 기본은 캡션에 쓴 해시태그를 그대로 둔다. HASHTAG_MODE=rewrite 일 때만 예전 고정 세트로 교체
     if not flag("HASHTAG_REWRITE", "true") or env("HASHTAG_MODE", "caption").lower() != "rewrite":
         return caption

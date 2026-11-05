@@ -294,9 +294,10 @@
    "path": "music/3jip/03_아빠가 삐졌다.mp3",
    "chorus": 127.0,
    "dur": 179.8,
-   "released": false,
+   "released": true,
    "added": "2026-10-29",
-   "source": "아빠가 삐졌다.wav"
+   "source": "아빠가 삐졌다.wav",
+   "released_on": "2026-11-06"
   },
   {
    "title": "엄마! 나 잘 살아~",

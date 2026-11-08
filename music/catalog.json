@@ -316,9 +316,10 @@
    "path": "music/3jip/05_할머니가 밥 먹고 가래.mp3",
    "chorus": 122.0,
    "dur": 169.2,
-   "released": false,
+   "released": true,
    "added": "2026-11-02",
-   "source": "할머니가 밥 먹고 가래.wav"
+   "source": "할머니가 밥 먹고 가래.wav",
+   "released_on": "2026-11-09"
   },
   {
    "title": "오늘도 수고했어, 나",

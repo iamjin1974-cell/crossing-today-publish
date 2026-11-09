@@ -451,7 +451,7 @@ def fetch_due_rows():
                      "threads_caption": rich(P.get("스레드 캡션", {})), "folder": rich(P.get("미디어 폴더", {})),
                      "music_kw": rich(P.get("음악 키워드", {})),
                      "reel_on": bool((P.get("릴스", {}) or {}).get("checkbox")),
-                     "reel_only": rich(P.get("포맷", {})).strip() == "릴스",
+                     "reel_only": rich(P.get("포맷", {})).   .strip().startswith("릴스"),
                      "already": (P.get("게시 URL", {}) or {}).get("url"),
                      "already_reel": (P.get("릴스 게시 URL", {}) or {}).get("url"),
                      "already_th": (P.get("스레드 URL", {}) or {}).get("url")})

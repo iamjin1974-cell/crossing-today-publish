@@ -330,6 +330,16 @@
    "released": false,
    "added": "2026-11-04",
    "source": "오늘도 수고했어, 나.wav"
+  },
+  {
+   "title": "금방 올 거야",
+   "album": "3집",
+   "path": "music/3jip/07_금방 올 거야.mp3",
+   "chorus": 98.5,
+   "dur": 196.8,
+   "released": false,
+   "added": "2026-11-10",
+   "source": "금방 올 거야.wav"
   }
  ]
 }

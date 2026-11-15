@@ -115,3 +115,89 @@ def test_scrub_hides_secrets():
 def test_unrelated_sentences_preserved():
     out, removed = P.strip_music_sentences("곡선을 그리며 걷는다.\n#동기부여 #음악\n굴곡진 하루.")
     assert removed == [] and "곡선" in out and "#음악" in out
+
+
+# ---- 2차 보완 (2026-11-15) ----
+
+@pytest.mark.parametrize("sent", ["내 이야기를 들어봐요.", "이웃의 목소리에 귀 기울여요.", "가사 노동을 나눕니다.",
+                                  "바람 소리가 들려요.", "친구가 내 부탁을 들어줬다."])
+def test_non_music_sentences_preserved(sent):
+    out, removed = P.strip_music_sentences(f"오늘의 기록. {sent}\n#기록")
+    assert removed == [] and sent in out
+
+
+@pytest.mark.parametrize("sent", ["이 노래 가사가 마음에 남는다.", "영상 속 음악이 들려요!", "이 곡을 들어봐요."])
+def test_music_sentences_removed_and_logged(monkeypatch, sent):
+    out, removed = P.strip_music_sentences(f"오늘도 걷는다. {sent}")
+    assert removed == [sent] and sent not in out and "오늘도 걷는다." in out
+    f = FakeCall(); monkeypatch.setattr(P, "call", f)
+    notes = []
+    P.th_post("U", "T", IMG, f"오늘도 걷는다. {sent}", reel_url=None, notes=notes)
+    assert any(sent[:6] in n for n in notes) and P.LOG and any("음악 문장" in l for l in P.LOG)
+
+
+def test_wait_ready_status_fields_match_official_doc(monkeypatch):
+    """공식 문서(troubleshooting): GET /{container}?fields=status,error_message, 값 IN_PROGRESS/FINISHED/PUBLISHED/ERROR/EXPIRED"""
+    seen = []
+    def fake(method, url, **p):
+        seen.append(p.get("fields")); return {"status": "FINISHED"}
+    monkeypatch.setattr(P, "call", fake)
+    P.wait_ready("https://graph.threads.com/v1.0/C1", "T", fields="status,error_message", max_wait=30, every=1)
+    assert seen == ["status,error_message"]
+    for st in ("ERROR", "EXPIRED"):
+        monkeypatch.setattr(P, "call", lambda m, u, st=st, **p: {"status": st, "error_message": "FAILED_PROCESSING_VIDEO"})
+        with pytest.raises(P.ApiError):
+            P.wait_ready("u", "T", fields="status,error_message", max_wait=30, every=1)
+    monkeypatch.setattr(P, "call", lambda m, u, **p: {"status": "PUBLISHED"})
+    P.wait_ready("u", "T", fields="status,error_message", max_wait=30, every=1)
+
+
+# ---- publish_row 호출부 연결 (인스타·Notion·Threads 전부 mock) ----
+
+def run_row(monkeypatch, row_over, reel_url, fake):
+    props, ig_reel_urls = {}, []
+    monkeypatch.setattr(P, "media_urls", lambda folder: (IMG, reel_url))
+    monkeypatch.setattr(P, "ig_credentials", lambda: ("H", "IGT", False))
+    monkeypatch.setattr(P, "ig_carousel", lambda *a, **k: "https://ig/c")
+    monkeypatch.setattr(P, "ig_reel", lambda host, uid, tok, url, *a, **k: ig_reel_urls.append(url) or "https://ig/r")
+    monkeypatch.setattr(P, "update_row", lambda pid, pr: props.update(pr))
+    monkeypatch.setattr(P, "call", fake)
+    for k, v in dict(IG_USER_ID="I", TH_USER_ID="U", TH_ACCESS_TOKEN="T", POST_REELS="true", MUSIC_ENABLED="false").items():
+        monkeypatch.setenv(k, v)
+    row = dict(id="p", title="t", caption=CAP, threads_caption=CAP, folder="87_contact", music_kw="none",
+               reel_on=True, reel_only=False, already=None, already_reel=None, already_th=None)
+    row.update(row_over)
+    errs = P.publish_row(row, {"ig", "reels", "threads"})
+    return errs, props, ig_reel_urls
+
+
+def test_publish_row_reel_checked_uses_same_url_as_instagram_video(monkeypatch):
+    f = FakeCall()
+    errs, props, ig_urls = run_row(monkeypatch, {}, REEL, f)
+    c = f.creates()
+    assert errs == [] and ig_urls == [REEL]
+    assert len(c) == 1 and c[0]["media_type"] == "VIDEO" and c[0]["video_url"] == REEL == ig_urls[0]
+    assert props["스레드 URL"]["url"].endswith("P1")
+
+
+def test_publish_row_reel_only_format_also_video(monkeypatch):
+    f = FakeCall()
+    run_row(monkeypatch, {"reel_on": False, "reel_only": True}, REEL, f)
+    assert [x["media_type"] for x in f.creates()] == ["VIDEO"]
+
+
+def test_publish_row_no_reel_file_falls_back_to_photo_with_note(monkeypatch):
+    f = FakeCall()
+    errs, props, ig_urls = run_row(monkeypatch, {}, None, f)
+    c = f.creates()
+    assert errs == [] and ig_urls == []
+    assert [x["media_type"] for x in c] == ["IMAGE"] and "video_url" not in c[0]
+    assert "노래" not in c[0]["text"] and "음악" not in c[0]["text"]
+    log = props["게시 로그"]["rich_text"][0]["text"]["content"]
+    assert "reel.mp4 없음" in log and "음악 문장 제거" in log
+
+
+def test_publish_row_reel_unchecked_stays_photo(monkeypatch):
+    f = FakeCall()
+    run_row(monkeypatch, {"reel_on": False, "reel_only": False}, REEL, f)
+    assert [x["media_type"] for x in f.creates()] == ["IMAGE"]

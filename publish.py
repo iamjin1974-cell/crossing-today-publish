@@ -346,7 +346,7 @@ def th_carousel(uid, token, urls, text):
 
 
 # v7 (2026-11-15): 릴스 회차는 스레드 본글도 reel.mp4(VIDEO)로 게시한다.
-#   Threads 공식 문서(posts): media_type=VIDEO + video_url(공개 URL), 컨테이너 처리 후(약 30초) threads_publish.
+#   Threads 공식 문서(posts, troubleshooting#상태조회: GET /{container-id}?fields=status,error_message → IN_PROGRESS/FINISHED/PUBLISHED/ERROR/EXPIRED, 권장 최대 5분): media_type=VIDEO + video_url(공개 URL), 컨테이너 처리 후(약 30초) threads_publish.
 #   영상이 없거나 '게시 전' 단계(컨테이너 생성·처리 실패·시간 초과)에서 실패하면 기존 사진 경로로 대체한다.
 #   단, threads_publish 호출 이후 결과가 불확실하면(타임아웃·permalink 실패) 사진으로 대체하지 않는다 — 이미 올라갔을 수 있어 중복 게시 위험.
 
@@ -358,7 +358,9 @@ class ThreadsPublishUncertain(ApiError):
 #  - 문장 = 줄바꿈, 또는 . ! ? … 뒤 공백 기준. 해시태그만 있는 줄은 검사하지 않고 보존.
 #  - 아래 키워드가 하나라도 들어 있으면 그 문장 삭제. 관련 없는 문장은 원문 그대로 보존.
 MUSIC_SENTENCE_RE = re.compile(
-    r"노래|음악|음원|멜로디|선율|가사|BGM|bgm|배경\s?음|플레이리스트|신곡|[이그한][ ]?곡(?![가-힣])|곡(?:을|이|은|도|에)\s|들려|귀 기울|들어\s?(?:보|주|봐)")
+    r"노래|음악|음원|멜로디|선율|BGM|bgm|배경\s?음|플레이리스트|신곡|[이그한][ ]?곡(?![가-힣])|곡(?:을|이|은|도|에)\s")
+# v7.1: '가사', '들려', '귀 기울', '들어보/주/봐' 는 음악 문맥 없이는 삭제 근거로 쓰지 않는다
+#   ('가사 노동', '이야기를 들어봐요', '목소리에 귀 기울여요' 보존). 음악 문맥이 있으면 위 키워드(노래·음악·곡 등)로 이미 삭제된다.
 
 
 def strip_music_sentences(text):
@@ -395,7 +397,7 @@ def th_video(uid, token, video_url, text):
     c = call("POST", f"{TH_HOST}/{uid}/threads", media_type="VIDEO", video_url=video_url, access_token=token, **th_text_params(text))
     log("  TH 영상 컨테이너 생성, 영상 처리 대기…")
     wait_ready(f"{TH_HOST}/{c['id']}", token, fields="status,error_message",
-               max_wait=int(env("THREADS_VIDEO_MAX_WAIT", "300")), every=10)  # 유한 대기: 기본 5분, ERROR/EXPIRED 는 즉시 실패
+               max_wait=int(env("THREADS_VIDEO_MAX_WAIT", "300")), every=int(env("THREADS_VIDEO_POLL_EVERY", "30")))  # 공식 권장: 최대 5분 / 유한 대기, ERROR·EXPIRED 즉시 실패
     try:
         p = call("POST", f"{TH_HOST}/{uid}/threads_publish", creation_id=c["id"], access_token=token)
         return call("GET", f"{TH_HOST}/{p['id']}", fields="permalink", access_token=token).get("permalink")

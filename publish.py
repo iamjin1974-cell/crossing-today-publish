@@ -313,7 +313,7 @@ def th_publish(uid, token, container_id):
 def th_text_params(text):
     if len(text) > 500:
         raise ApiError(f"스레드 본문 500자 초과 ({len(text)}자)")
-    p = {"text": text}
+    p = {"text": text} if text else {}
     tag = env("THREADS_TOPIC_TAG", "독서")
     if tag:
         p["topic_tag"] = tag
@@ -345,8 +345,82 @@ def th_carousel(uid, token, urls, text):
     return th_publish(uid, token, c["id"])
 
 
-def th_post(uid, token, urls, text):
+# v7 (2026-11-15): 릴스 회차는 스레드 본글도 reel.mp4(VIDEO)로 게시한다.
+#   Threads 공식 문서(posts, troubleshooting#상태조회: GET /{container-id}?fields=status,error_message → IN_PROGRESS/FINISHED/PUBLISHED/ERROR/EXPIRED, 권장 최대 5분): media_type=VIDEO + video_url(공개 URL), 컨테이너 처리 후(약 30초) threads_publish.
+#   영상이 없거나 '게시 전' 단계(컨테이너 생성·처리 실패·시간 초과)에서 실패하면 기존 사진 경로로 대체한다.
+#   단, threads_publish 호출 이후 결과가 불확실하면(타임아웃·permalink 실패) 사진으로 대체하지 않는다 — 이미 올라갔을 수 있어 중복 게시 위험.
+
+class ThreadsPublishUncertain(ApiError):
+    """threads_publish 호출 이후 성공 여부를 알 수 없음 → 사진 대체 금지(중복 게시 방지), 수동 확인 필요."""
+
+
+# 삭제 규칙: 사진 게시(사진 회차 / 영상 실패 대체)에서는 노래·영상 속 음악을 말하는 '문장'을 통째로 지운다.
+#  - 문장 = 줄바꿈, 또는 . ! ? … 뒤 공백 기준. 해시태그만 있는 줄은 검사하지 않고 보존.
+#  - 아래 키워드가 하나라도 들어 있으면 그 문장 삭제. 관련 없는 문장은 원문 그대로 보존.
+MUSIC_SENTENCE_RE = re.compile(
+    r"노래|음악|음원|멜로디|선율|BGM|bgm|배경\s?음|플레이리스트|신곡|[이그한][ ]?곡(?![가-힣])|곡(?:을|이|은|도|에)\s")
+# v7.1: '가사', '들려', '귀 기울', '들어보/주/봐' 는 음악 문맥 없이는 삭제 근거로 쓰지 않는다
+#   ('가사 노동', '이야기를 들어봐요', '목소리에 귀 기울여요' 보존). 음악 문맥이 있으면 위 키워드(노래·음악·곡 등)로 이미 삭제된다.
+
+
+def strip_music_sentences(text):
+    """(정리된 본문, 삭제된 문장 목록). 사진 게시 전용."""
+    removed, out_lines = [], []
+    for ln in (text or "").replace("\r", "").split("\n"):
+        s = ln.strip()
+        if not s or (s.startswith("#") and all(w.startswith("#") for w in s.split())):
+            out_lines.append(ln.rstrip()); continue
+        parts = re.split(r"(?<=[.!?…。])\s+", ln.strip())
+        keep = []
+        for part in parts:
+            if MUSIC_SENTENCE_RE.search(part):
+                removed.append(part.strip())
+            else:
+                keep.append(part)
+        if keep:
+            out_lines.append(" ".join(keep))
+        # 줄 전체가 삭제된 문장이면 빈 줄도 남기지 않음
+    clean = re.sub(r"\n{3,}", "\n\n", "\n".join(out_lines)).strip()
+    return clean, removed
+
+
+SECRET_RE = re.compile(r"(access_token|token|secret|password|api[_-]?key|chat_id)=[^&\s\"']+|https?://\S+|Bearer\s+\S+|\b(?:TH|IG|EAA)[A-Za-z0-9_-]{20,}", re.I)
+
+
+def scrub(msg, limit=160):
+    """게시 로그에 남길 오류 문구에서 토큰·URL·키 같은 것을 가린다."""
+    return SECRET_RE.sub("[가림]", str(msg))[:limit]
+
+
+def th_video(uid, token, video_url, text):
+    """reel.mp4 를 Threads VIDEO 로 게시. 게시 전 실패는 ApiError, 게시 호출 이후 불확실은 ThreadsPublishUncertain."""
+    c = call("POST", f"{TH_HOST}/{uid}/threads", media_type="VIDEO", video_url=video_url, access_token=token, **th_text_params(text))
+    log("  TH 영상 컨테이너 생성, 영상 처리 대기…")
+    wait_ready(f"{TH_HOST}/{c['id']}", token, fields="status,error_message",
+               max_wait=int(env("THREADS_VIDEO_MAX_WAIT", "300")), every=int(env("THREADS_VIDEO_POLL_EVERY", "60")))  # 공식 권장: 최대 5분 / 유한 대기, ERROR·EXPIRED 즉시 실패
+    try:
+        p = call("POST", f"{TH_HOST}/{uid}/threads_publish", creation_id=c["id"], access_token=token)
+        return call("GET", f"{TH_HOST}/{p['id']}", fields="permalink", access_token=token).get("permalink")
+    except Exception as e:
+        raise ThreadsPublishUncertain(f"영상 게시 결과 불확실(중복 방지로 사진 대체 안 함, 스레드 직접 확인 필요): {scrub(e)}")
+
+
+def th_post(uid, token, urls, text, reel_url=None, notes=None):
+    """reel_url 이 있으면 영상 우선(실패 시 사진 대체). notes: 게시 로그에 남길 메모 리스트."""
+    notes = notes if notes is not None else []
     mode = env("THREADS_MEDIA", "cover").lower()
+    if reel_url and mode != "none":
+        try:
+            return th_video(uid, token, reel_url, text)
+        except ThreadsPublishUncertain:
+            raise
+        except Exception as e:
+            log(f"  TH 영상 게시 실패 → 사진으로 대체: {scrub(e)}")
+            notes.append(f"Threads 영상 실패→사진 대체({scrub(e, 100)})")
+    text, removed = strip_music_sentences(text)
+    if removed:
+        log(f"  TH 음악 문장 {len(removed)}개 제거: " + " / ".join(scrub(r, 80) for r in removed))
+        notes.append("스레드 음악 문장 제거: " + " / ".join(scrub(r, 80) for r in removed))
     if mode == "none":
         return th_text_only(uid, token, text)
     if mode == "carousel":
@@ -480,7 +554,7 @@ def txt(s):
 
 def publish_row(row, ch):
     log(f"▶ {row['title']}  (폴더 {row['folder']}, 채널 {','.join(sorted(ch))})")
-    errors, res = [], {}
+    errors, res, notes = [], {}, []
     if not row["folder"]:
         raise ApiError("'미디어 폴더' 비어 있음")
     if not row["caption"]:
@@ -560,13 +634,16 @@ def publish_row(row, ch):
             log("  Threads 이미 게시됨 — 건너뜀")
         else:
             try:
-                res["th"] = th_post(th_uid, th_tok, urls, row["threads_caption"] or row["caption"][:500]); log(f"  ✅ Threads {res['th']}")
+                th_reel = reel_url if (row.get("reel_on") or row.get("reel_only")) else None  # 인스타 릴스와 같은 공개 URL
+                if (row.get("reel_on") or row.get("reel_only")) and not reel_url:
+                    notes.append("Threads: reel.mp4 없음 → 사진 게시")
+                res["th"] = th_post(th_uid, th_tok, urls, row["threads_caption"] or row["caption"][:500], th_reel, notes); log(f"  ✅ Threads {res['th']}")
                 mark("th", True, res["th"])
             except Exception as e:
                 errors.append(f"Threads: {e}"); mark("th", False, err=f"Threads: {e}")
 
     stamp = dt.datetime.now(KST).strftime("%Y-%m-%d %H:%M KST")
-    props = {"게시 로그": txt(f"[{stamp}] {'/'.join(sorted(ch))} " + ("성공" if not errors else "일부 실패: " + " | ".join(errors)) + (" (DRY RUN)" if DRY else ""))}
+    props = {"게시 로그": txt(f"[{stamp}] {'/'.join(sorted(ch))} " + ("성공" if not errors else "일부 실패: " + " | ".join(errors)) + (" | " + " | ".join(notes) if notes else "") + (" (DRY RUN)" if DRY else ""))}
     if res.get("ig") and not row["already"]:
         props["게시 URL"] = {"url": res["ig"]}
     if res.get("reel") and not row.get("already_reel"):

@@ -201,3 +201,45 @@ def test_publish_row_reel_unchecked_stays_photo(monkeypatch):
     f = FakeCall()
     run_row(monkeypatch, {"reel_on": False, "reel_only": False}, REEL, f)
     assert [x["media_type"] for x in f.creates()] == ["IMAGE"]
+
+
+# ---- 폴링 기본값: Threads 영상 60초(공식 권장 1분당 1회, 최대 5분), 인스타 공통 wait_ready 기본은 불변 ----
+
+def _th_video_wait_kwargs(monkeypatch):
+    got = {}
+    monkeypatch.setattr(P, "wait_ready", lambda url, token, **kw: got.update(kw))
+    monkeypatch.setattr(P, "call", FakeCall())
+    P.th_video("U", "T", REEL, "본문")
+    return got
+
+
+def test_th_video_default_poll_is_60s_max_300s(monkeypatch):
+    monkeypatch.delenv("THREADS_VIDEO_POLL_EVERY", raising=False)
+    monkeypatch.delenv("THREADS_VIDEO_MAX_WAIT", raising=False)
+    kw = _th_video_wait_kwargs(monkeypatch)
+    assert kw["every"] == 60 and kw["max_wait"] == 300
+
+
+def test_th_video_poll_env_override(monkeypatch):
+    monkeypatch.setenv("THREADS_VIDEO_POLL_EVERY", "45")
+    assert _th_video_wait_kwargs(monkeypatch)["every"] == 45
+
+
+def test_wait_ready_common_defaults_unchanged_for_instagram():
+    import inspect
+    d = inspect.signature(P.wait_ready).parameters
+    assert d["max_wait"].default == 600 and d["every"].default == 15
+
+
+def test_th_video_wait_is_finite_with_60s_poll(monkeypatch):
+    """IN_PROGRESS 가 계속되면 유한 시간 후 ApiError (가짜 시계, 실제 sleep 없음)"""
+    t = {"now": 0.0}
+    monkeypatch.setattr(P.time, "time", lambda: t["now"])
+    sleeps = []
+    monkeypatch.setattr(P.time, "sleep", lambda s: (sleeps.append(s), t.__setitem__("now", t["now"] + s)))
+    monkeypatch.setattr(P, "call", FakeCall(fail_video_status="IN_PROGRESS"))
+    monkeypatch.delenv("THREADS_VIDEO_POLL_EVERY", raising=False)
+    monkeypatch.delenv("THREADS_VIDEO_MAX_WAIT", raising=False)
+    with pytest.raises(P.ApiError, match="시간 초과"):
+        P.th_video("U", "T", REEL, "본문")
+    assert set(sleeps) == {60} and len(sleeps) == 6

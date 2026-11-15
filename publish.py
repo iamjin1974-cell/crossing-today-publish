@@ -397,7 +397,7 @@ def th_video(uid, token, video_url, text):
     c = call("POST", f"{TH_HOST}/{uid}/threads", media_type="VIDEO", video_url=video_url, access_token=token, **th_text_params(text))
     log("  TH 영상 컨테이너 생성, 영상 처리 대기…")
     wait_ready(f"{TH_HOST}/{c['id']}", token, fields="status,error_message",
-               max_wait=int(env("THREADS_VIDEO_MAX_WAIT", "300")), every=int(env("THREADS_VIDEO_POLL_EVERY", "30")))  # 공식 권장: 최대 5분 / 유한 대기, ERROR·EXPIRED 즉시 실패
+               max_wait=int(env("THREADS_VIDEO_MAX_WAIT", "300")), every=int(env("THREADS_VIDEO_POLL_EVERY", "60")))  # 공식 권장: 최대 5분 / 유한 대기, ERROR·EXPIRED 즉시 실패
     try:
         p = call("POST", f"{TH_HOST}/{uid}/threads_publish", creation_id=c["id"], access_token=token)
         return call("GET", f"{TH_HOST}/{p['id']}", fields="permalink", access_token=token).get("permalink")

@@ -341,6 +341,56 @@
    "released": false,
    "added": "2026-11-10",
    "source": "금방 올 거야.wav"
+  },
+  {
+   "title": "내 꿈이 뭐였지 (신기준-남성)",
+   "album": "3집",
+   "path": "music/3jip/08_내 꿈이 뭐였지 (신기준-남성).mp3",
+   "chorus": 187.0,
+   "dur": 233.1,
+   "released": false,
+   "added": "2026-11-16",
+   "source": "내 꿈이 뭐였지 (신기준-남성).wav"
+  },
+  {
+   "title": "새벽 세 시, 나에게 (A-OST발라드)",
+   "album": "3집",
+   "path": "music/3jip/09_새벽 세 시, 나에게 (A-OST발라드).mp3",
+   "chorus": 134.0,
+   "dur": 226.8,
+   "released": false,
+   "added": "2026-11-16",
+   "source": "새벽 세 시, 나에게 (A-OST발라드).wav"
+  },
+  {
+   "title": "아직 있어 (신기준-남성)",
+   "album": "3집",
+   "path": "music/3jip/10_아직 있어 (신기준-남성).mp3",
+   "chorus": 118.5,
+   "dur": 196.8,
+   "released": false,
+   "added": "2026-11-16",
+   "source": "아직 있어 (신기준-남성).wav"
+  },
+  {
+   "title": "어떡해 (신기준-여성)",
+   "album": "3집",
+   "path": "music/3jip/11_어떡해 (신기준-여성).mp3",
+   "chorus": 128.5,
+   "dur": 208.0,
+   "released": false,
+   "added": "2026-11-16",
+   "source": "어떡해 (신기준-여성).wav"
+  },
+  {
+   "title": "혼자 왔어, 내 발로 (신기준-남성)",
+   "album": "3집",
+   "path": "music/3jip/12_혼자 왔어, 내 발로 (신기준-남성).mp3",
+   "chorus": 166.5,
+   "dur": 213.6,
+   "released": false,
+   "added": "2026-11-16",
+   "source": "혼자 왔어, 내 발로 (신기준-남성).wav"
   }
  ]
 }
